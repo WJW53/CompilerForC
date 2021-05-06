@@ -4,7 +4,7 @@
     <div :class="{ 'main-app': true, 'menu-fold': $store.state.collapsed }">
       <slider-nav></slider-nav>
       <!-- 根据路由动态展示主要内容区的数据 -->
-      <router-view></router-view>
+
     </div>
   </div>
 </template>
@@ -32,6 +32,7 @@ export default {
 </script>
 
 <style lang="less">
-// 这里用less写法即可,千万不要加上scoped
+// 这里用less写法即可,千万不要加上scoped,另,得加个~才能正确解析
 @import url("~@/assets/css/home.less");
+
 </style>

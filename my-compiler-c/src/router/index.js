@@ -105,6 +105,16 @@ const routes = [
         component: () => import("../views/page/LL1.vue"),
       },
       {
+        path: 'RecursiveDescent',
+        name: "RecursiveDescent",
+        meta: {
+          title: '递归下降',
+          icon: 'edit',
+          hidden: false,
+        },
+        component: () => import("../views/page/RecursiveDescent.vue"),
+      },
+      {
         path: 'LR',
         name: "LR",
         meta: {

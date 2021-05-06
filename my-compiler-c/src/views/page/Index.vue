@@ -1,13 +1,17 @@
 <template>
-  <div class="index">
-    选择上传文件
-  </div>
+  <keep-alive>
+    
+  </keep-alive>
 </template>
-
 <script>
 export default {
-  components: {
-
+  data() {
+    return {
+      txtData: "",
+    };
+  },
+  methods: {
+    
   },
 };
 </script>
