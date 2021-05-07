@@ -1,6 +1,6 @@
 <template>
-  <div class="DGA">
-    DGA
+  <div class="DAG">
+    DAG
   </div>
 </template>
 

@@ -29,7 +29,11 @@
           <input id="#txt" type="file" />
           <button file="submit" @click="uploadFile">提交</button>
         </div>
-        <div class="preview-file"></div>
+        <textarea
+          class="preview-file"
+          readonly="readonly"
+          v-model="previewData"
+        ></textarea>
       </div>
       <div class="middle-button">转换代码=></div>
       <div class="right-show">
@@ -40,19 +44,38 @@
 </template>
 
 <script>
+import { mapState, mapGetters, mapMutations, mapActions } from "vuex";
 export default {
   data() {
     return {
-      // curRouteMatched: this.$route.matched,
       txtData: "",
     };
   },
+  computed: {
+    //设置别名，起到简化代码的作用，比如this.$store.state.cityID可以用this.cId替代
+    // 方法一：
+    // ...mapState({
+    //   cId: state => state.cityID,
+    //   cname:state => state.city
+    // }),
+    // 方法二：
+    // ...mapState({
+    //   cId: 'cityID',
+    //   cname:'city'
+    // }),
+    // 方法三(不设置别名，直接使用this.cityID即可)：
+    // ...mapState(['cityID','city']),
+    ...mapState({
+      previewData: (state) => state.compilation.previewData,
+      textData: (state) => state.compilation.textData,
+    }),
+  },
   methods: {
+    ...mapActions(["changePreviewData", "changeTextData"]),
     toggleCollapsed() {
       this.$store.dispatch("changeCollapsed");
     },
     uploadFile() {
-      // console.log(document.getElementById("#txt"));
       let file = document.getElementById("#txt").files[0];
       //判断上传文件是不是txt格式,判断后缀是不是.txt
       if (file.name.substr(-4).toLocaleLowerCase() != ".txt") {
@@ -60,14 +83,16 @@ export default {
       } //如果上传文件是txt文件，则显示文件的预览
       else {
         let reader = new FileReader();
+        let _this = this;
         reader.readAsText(file, "utf-8");
-        //reader.readAsDataURL(file);
         reader.onload = function (evt) {
-          this.txtData = evt.target.result;
           //注意这样获取的文本里的回车是\r\n而不是单独的一个\n
-          //也就是说我们敲了一个回车代表两个字符长度,不要统计出错了哦
-          this.txtData = this.txtData.replace(/\r\n/g, "\n"); //替换成\n
-          console.log(this.txtData, this.txtData.length);
+          //也就是说我们敲了一个回车代表两个字符长度,不要统计出错了哦,所以这里我替换为一个\n
+          let value = evt.target.result.replace(/\r\n/g, "\n");
+          _this.changePreviewData({ value }).then(() => {}); //这是从mapAction中映射出来的方法
+          _this.changeTextData({ value }).then(() => {});
+          // console.log('textdata\n',_this.textData);
+          // console.log(_this.previewData.length);
           // for(let item of this.txtData){
           //   console.log(item,item==='\n');
           // }

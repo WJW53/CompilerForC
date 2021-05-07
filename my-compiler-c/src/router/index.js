@@ -1,9 +1,6 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
 import Home from '../views/layout/Home.vue';
-// import DFA from '../views/page/DFA.vue';
-// import SemanticAnalysis from '../views/page/SemanticAnalysis.vue';
-
 
 Vue.use(VueRouter);
 
@@ -182,8 +179,8 @@ const routes = [
     ],
   },
   {
-    path: '/DGA',
-    name: 'DGA',
+    path: '/DAG',
+    name: 'DAG',
     component: Home,
     meta: {
       title: "代码优化",
@@ -193,13 +190,13 @@ const routes = [
     children: [
       {
         path: 'index',
-        name: "DGA-Index",
+        name: "DAG-Index",
         meta: {
-          title: 'DGA',
+          title: 'DAG',
           icon: 'edit',
           hidden: false,
         },
-        component: () => import("../views/page/DGA.vue")
+        component: () => import("../views/page/DAG.vue")
       }
     ]
   },
