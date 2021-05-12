@@ -13,7 +13,7 @@ export default new Vuex.Store({
       previewData: '',//左侧预览区的内容
       resultData: '',//右侧结果的内容
       textData: '',//C语言源程序的字符串形式
-      tokenData: '',//词法分析后的token串
+      tokenData: [],//词法分析后的token,每个元素又是一个数组(包含四个元素)
     },
     changeCode: false,
   },

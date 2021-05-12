@@ -1,7 +1,7 @@
 let specTable = {
 	wordType:
 	{
-		keyWord: 100,
+		reserveWord: 100,
 		operator: 200,
 		boundary: 300,
 		integer: 400,
@@ -10,7 +10,7 @@ let specTable = {
 		id: 700,
 		float: 800
 	},
-	keyWord:
+	reserveWord:
 	{
 		main: 101,
 		int: 102,
@@ -69,7 +69,7 @@ let specTable = {
 		register: 155,
 		union: 156,
 	},
-	boudary:
+	boundary:
 	{
 		'{': 301,
 		'}': 302,
@@ -80,9 +80,9 @@ let specTable = {
 		':': 307,
 		'"': 308,
 		'\'': 309,
-		'/*': 310,
-		'*/': 311,
-		'//': 312,
+		// '/*': 310,//因为我已经先把注释处理掉了
+		// '*/': 311,
+		// '//': 312,
 		'#': 313
 	},
 	operator:
@@ -188,7 +188,7 @@ export default specTable;
 // 		[152, "printf"],
 // 		[153, "scanf"],
 // 	],
-// 	boudary: [//界符表
+// 	boundary: [//界符表
 // 		[301, "{"],
 // 		[302, "}"],
 // 		[303, "["],

@@ -31,7 +31,6 @@
         </div>
         <textarea
           class="preview-file"
-          readonly="readonly"
           v-model="previewData"
         ></textarea>
       </div>
@@ -96,11 +95,11 @@ export default {
           //注意这样获取的文本里的回车是\r\n而不是单独的一个\n
           //也就是说我们敲了一个回车代表两个字符长度,不要统计出错了哦,所以这里我替换为一个\n
           let value = evt.target.result.replace(/\r\n/g, "\n");
-          let res = value.split("\n");
-          for (let i = 0; i < res.length; i++) {
-            res[i] = res[i].split(",");
-          }
-          console.log(res);
+          // let res = value.split("\n");
+          // for (let i = 0; i < res.length; i++) {
+          //   res[i] = res[i].split(",");
+          // }
+          // console.log(res);
           _this.changePreviewData({ value }).then(() => {}); //这是从mapAction中映射出来的方法
           _this.changeTextData({ value }).then(() => {});
           // console.log('textdata\n',_this.textData);
