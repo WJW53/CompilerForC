@@ -48,6 +48,16 @@ const routes = [
     component: Home,
     children: [
       {
+        path: 'GetToken',
+        name: 'GetToken',
+        meta: {
+          title: 'GetToken',
+          icon: 'edit',
+          hidden: false,
+        },
+        component: () => import("../views/page/GetToken.vue"),
+      },
+      {
         path: 'NFA',
         name: 'NFA',
         meta: {

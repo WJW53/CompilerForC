@@ -35,7 +35,7 @@
           v-model="previewData"
         ></textarea>
       </div>
-      <div class="middle-button">转换代码=></div>
+      <div class="middle-button" @click="changeFun">转换后代码=></div>
       <div class="right-show">
         <router-view></router-view>
       </div>
@@ -71,6 +71,12 @@ export default {
     }),
   },
   methods: {
+    changeFun() {
+      let flag = this.$store.state.changeCode;
+      if (flag === false) {
+        this.$store.state.changeCode = true;
+      }
+    },
     ...mapActions(["changePreviewData", "changeTextData"]),
     toggleCollapsed() {
       this.$store.dispatch("changeCollapsed");
@@ -78,7 +84,8 @@ export default {
     uploadFile() {
       let file = document.getElementById("#txt").files[0];
       //判断上传文件是不是txt格式,判断后缀是不是.txt
-      if (file.name.substr(-4).toLocaleLowerCase() != ".txt") {
+      let houzhui = file.name.substr(-4).toLocaleLowerCase();
+      if (houzhui != ".txt" && houzhui != ".csv") {
         alert("请上传格式为txt的文件！");
       } //如果上传文件是txt文件，则显示文件的预览
       else {
@@ -89,6 +96,11 @@ export default {
           //注意这样获取的文本里的回车是\r\n而不是单独的一个\n
           //也就是说我们敲了一个回车代表两个字符长度,不要统计出错了哦,所以这里我替换为一个\n
           let value = evt.target.result.replace(/\r\n/g, "\n");
+          let res = value.split("\n");
+          for (let i = 0; i < res.length; i++) {
+            res[i] = res[i].split(",");
+          }
+          console.log(res);
           _this.changePreviewData({ value }).then(() => {}); //这是从mapAction中映射出来的方法
           _this.changeTextData({ value }).then(() => {});
           // console.log('textdata\n',_this.textData);

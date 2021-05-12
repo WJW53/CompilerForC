@@ -14,7 +14,8 @@ export default new Vuex.Store({
       resultData: '',//右侧结果的内容
       textData: '',//C语言源程序的字符串形式
       tokenData: '',//词法分析后的token串
-    }
+    },
+    changeCode: false,
   },
   getters: {
     getPreviewData(state) {
@@ -37,7 +38,7 @@ export default new Vuex.Store({
     setTokenData(state, value) {
       state.compilation.tokenData = value;
     },
-    
+
 
   },
   actions: {
@@ -56,7 +57,7 @@ export default new Vuex.Store({
     changeTokenData({ commit }, payload) {
       commit('setTokenData', payload.value);
     },
-    
+
   },
   modules: {
   },
