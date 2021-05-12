@@ -1,21 +1,61 @@
 <template>
   <div class="get-token">
     GetToken
-    <textarea readonly class="result1" v-model="newTextData"></textarea>
-    <textarea readonly class="errors" v-model="errors"></textarea>
+    <!-- <textarea readonly class="result1" v-model="token"></textarea> -->
+    <a-table
+      :columns="columnHead"
+      :data-source="token"
+      :scroll="{ x: 800, y: 1100 }"
+      class="table"
+    >
+    </a-table>
+    <!-- <textarea readonly class="errors" v-model="errors"></textarea> -->
   </div>
 </template>
 <script>
 import specTable from "@/storage/LexTable.js";
+console.log(specTable);
+const columnHead = [
+  {
+    title: "TokenName",
+    width: 200,
+    dataIndex: "TokenName",
+    key: "TokenName",
+  },
+  {
+    title: "TokenCode",
+    width: 200,
+    dataIndex: "TokenCode",
+    key: "TokenCode",
+  },
+  { title: "row", dataIndex: "row", key: "row", width: 200 },
+  { title: "column", dataIndex: "column", key: "column" },
+];
+
+// const dataArr = [];
+// for (let i = 0; i < 100; i++) {
+//   dataArr.push({
+//     key: i,
+//     TokenName: `Edrward ${i}`,
+//     TokenCode: 32,
+//     row: `London Park no. ${i}`,
+//     column:``;
+//   });
+// }
 export default {
   data() {
     return {
-      row: 0,
+      columnHead,
+      specTable,
+      row: 1,
       column: 0,
-      idTable: [], //标识符-种别码表
+      idTable: this.$store.state.compilation.idData, //标识符-种别码表
       errors: "以下是该源代码的错误信息: \n", //每条都是字符串
       newTextData: null, //过滤后的新字符串
       token: this.$store.state.compilation.tokenData,
+      syn: null,
+      idx: 0,//做索引
+      count:0,//做key
     };
   },
   watch: {
@@ -31,12 +71,24 @@ export default {
   },
   created() {
     this.startGetToken();
-    this.scanner(this.newTextData, this.token);
   },
   methods: {
     startGetToken() {
-      //   console.log(this.$store.state.compilation.previewData);
       this.filterResource(this.$store.state.compilation.previewData);
+      this.$store.state.compilation.previewData = this.newTextData;
+      let len = this.newTextData.length;
+      while (this.syn !== 0 && this.idx < len) {
+        this.scanner(this.newTextData);
+        if (this.syn === 700) {
+          //标识符,即id
+          let key = this.token[this.token.length - 1][0];
+          console.log(key);
+          if (this.idTable[key] === undefined) {
+            //如果还没存进id表中,就存
+            this.idTable[key] = this.token[this.token.length - 1];
+          }
+        }
+      }
     },
     searchReserve(reserveWord, s) {
       //查找保留字,成功查找则返回对应种别码,否则返回700种别码,即为标识符
@@ -70,59 +122,238 @@ export default {
       }
       this.newTextData = tempString;
     },
-    scanner(data, token, syn, idx) {
+    //我还有浮点数和字符串没写呢..
+    scanner(data) {
       //根据DFA状态转换图设计. 分析模块,算法核心
-      let i = 0,
-        count = 0,
-        ch = data[idx],
-        temp = null;
-      while (ch == " ") {
-        idx++;
-        ch = data[idx];
+      let i_1 = null, //i的前一位索引
+        str = "", //每次都初始化为"",这个就是token name
+        temp = null,
+        ch = data[this.idx], //当前字符
+        flag = true; //默认没有错
+      while (this.isWs2(ch)) {
+        //跳过空字符
+        if (ch === "\n") {
+          this.row++;
+          this.column = 0;
+        } else {
+          this.column++;
+        }
+        this.idx++;
+        ch = data[this.idx];
       }
-      if (this.isLetter(data[idx])) {
+      if (this.isLetter(data[this.idx])) {
         //开头为字母
-      } else if (this.isDigit(data[idx])) {
-      } else if (this.isBoundary(data[idx])) {
-      } else if (this.isOperator(data[idx])) {
-          temp = data[idx];
-          if(temp==='+'){//+,++,+++,+=
-
-          }else if(temp==='-'){
-
-          }else if(temp === '*'){//*,*=
-
-          }else if(temp === '/'){
-
-          }else if(temp === '%'){
-
-          }else if(temp==='<'){//<,<<,<=,<<=
-
-          }else if(temp==='>'){
-
-          }else if(temp==='='){
-              
-          }else if(temp==='!'){//!,!=
-
-          }else if(temp==='&'){//&,&&,&=,取址符暂时不管了
-
-          }else if(temp==='|'){//|,||,|=
-
-          }else{
-              //直接赋值对应种别码syn
+        str += data[this.idx++];
+        while (this.isLetter(data[this.idx]) || this.isDigit(data[this.idx])) {
+          str += data[this.idx++];
+        }
+        if (data[i_1] === '"' && data[this.idx] === '"') {
+          //这有问题
+          this.syn = 600; //字符串的种别码
+        } else {
+          this.syn = this.searchReserve(specTable.reserveWord, str); //保留字或者id的种别码
+        }
+        console.log(this.syn, "letters");
+      } else if (this.isDigit(data[this.idx])) {
+        //数字
+        i_1 = this.idx - 1;
+        while (this.isDigit(data[this.idx])) {
+          str += data[this.idx++];
+        }
+        if (data[i_1] === '"') {
+          while (this.isLetter(data[this.idx])) {
+            str += data[this.idx++];
           }
-      }else{
-          this.errors += ("error：there is no exist "+ch+"\n");
-          return;
+          if (this.idx < data.length - 1) {
+            //因为最后起码还得有个'"'
+            this.syn = 600; //字符串的种别码
+          } else {
+            this.errors += "该字符串没有闭合,程序出错,请修改!!\n";
+          }
+        } else {
+          this.syn = 400; //整数的种别码
+        }
+        console.log(this.syn, "digit");
+      } else if (this.isBoundary(data[this.idx])) {
+        //界符
+        str += data[this.idx++];
+        this.syn = this.specTable.boundary[str];
+        console.log(this.syn, "boundary");
+      } else if (this.isOperator(data[this.idx])) {
+        //超前搜索,记得回退一格
+        //运算符
+        temp = data[this.idx];
+        str += temp;
+        if (temp === "+") {
+          //+,++,+=, +++(这其实就是先++再+,所以不用管这种)
+          this.idx++;
+          if (data[this.idx] === "+") {
+            this.syn = 203;
+            str += data[this.idx];
+          } else if (data[this.idx] === "=") {
+            this.syn = 230;
+            str += data[this.idx];
+          } else {
+            this.idx--;
+            this.syn = 209;
+          }
+          this.idx++;
+        } else if (temp === "-") {
+          this.idx++;
+          if (data[this.idx] === "-") {
+            this.syn = 204;
+            str += data[this.idx];
+          } else if (data[this.idx] === "=") {
+            this.syn = 231;
+            str += data[this.idx];
+          } else {
+            this.idx--;
+            this.syn = 210;
+          }
+          this.idx++;
+        } else if (temp === "*") {
+          //*,*=
+          this.idx++;
+          if (data[this.idx] === "=") {
+            this.syn = 232;
+            str += data[this.idx];
+          } else {
+            this.idx--;
+            this.syn = 206;
+          }
+          this.idx++;
+        } else if (temp === "/") {
+          this.idx++;
+          if (data[this.idx] === "=") {
+            this.syn = 233;
+            str += data[this.idx];
+          } else {
+            this.idx--;
+            this.syn = 207;
+          }
+          this.idx++;
+        } else if (temp === "%") {
+          this.idx++;
+          if (data[this.idx] === "=") {
+            this.syn = 234;
+            str += data[this.idx];
+          } else {
+            this.idx--;
+            this.syn = 208;
+          }
+          this.idx++;
+        } else if (temp === "<") {
+          //<,<<,<=,<<=
+          this.idx++; //后移,超前搜索
+          if (data[this.idx] === "=") {
+            this.syn = 212;
+            str += data[this.idx];
+          } else if (data[this.idx] === "<") {
+            str += data[this.idx];
+            if (data[++this.idx] === "=") {
+              this.syn = 225;
+              str += data[this.idx];
+            } else {
+              this.idx--;
+              this.syn = 223;
+            }
+          } else {
+            this.idx--;
+            this.syn = 211;
+          }
+          this.idx++;
+        } else if (temp === ">") {
+          this.idx++; //后移,超前搜索
+          if (data[this.idx] === "=") {
+            str += data[this.idx];
+            this.syn = 214;
+          } else if (data[this.idx] === ">") {
+            str += data[this.idx];
+            if (data[++this.idx] === "=") {
+              this.syn = 224;
+              str += data[this.idx];
+            } else {
+              this.idx--; //因为这里是<<嘛,所以这先退一位,因为最后一句又加了的
+              this.syn = 222;
+            }
+          } else {
+            this.idx--;
+            this.syn = 213;
+          }
+          this.idx++;
+        } else if (temp === "=") {
+          this.idx++;
+          if (data[this.idx] === "=") {
+            str += data[this.idx];
+            this.syn = 215;
+          } else {
+            this.idx--;
+            this.syn = 219;
+          }
+          this.idx++;
+        } else if (temp === "!") {
+          //!,!=
+          this.idx++;
+          if (data[this.idx] === "=") {
+            str += data[this.idx];
+            this.syn = 216;
+          } else {
+            this.idx--;
+            this.syn = 205;
+          }
+          this.idx++;
+        } else if (temp === "&") {
+          //&,&&,&=,取址符暂时不管了
+          this.idx++;
+          if (data[this.idx] === "&") {
+            str += data[this.idx];
+            this.syn = 217;
+          } else if (data[idx] === "=") {
+            str += data[this.idx];
+            this.syn = 226;
+          } else {
+            this.idx--;
+            this.syn = 236;
+          }
+          this.idx++;
+        } else if (temp === "|") {
+          //|,||,|=
+          this.idx++;
+          if (data[this.idx] === "|") {
+            str += data[this.idx];
+            this.syn = 218;
+          } else if (data[this.idx] === "=") {
+            str += data[this.idx];
+            this.syn = 227;
+          } else {
+            this.idx--;
+            this.syn = 240;
+          }
+          this.idx++;
+        } else if (this.idx === data.length) {
+          this.syn = 0; //结束了!!
+        } else {
+          //剩余的直接赋值对应种别码即可
+          this.syn = this.specTable.operator[data[this.idx++]];
+          str += data[this.idx];
+        }
+        console.log(this.syn, "operator");
+      } else {
+        flag = false;
+        this.errors += "error：there is no exist " + data[this.idx] + "\n";
+      }
+      if (flag) {
+        this.count++;
+        console.log(this.syn);
+        this.token.push({
+          key: this.count,
+          TokenName: str,
+          TokenCode: this.syn,
+          row: this.row,
+          column: this.column,
+        });
       }
     },
-    // getNextChar(s, i) {
-    //   //s是当前字符串,i是下一个字符的索引
-    //   while (this.isWs(s[i])) {
-    //     i++;
-    //   }
-    //   return s[i];
-    // },
     isDigit(ch) {
       return ch <= "9" && ch >= "0";
     },
@@ -134,7 +365,7 @@ export default {
 
     isWs1(ch) {
       return (
-        ch === "\n" ||
+        ch === " " ||
         ch === "\r" ||
         ch === "\t" ||
         ch === "\v" ||
@@ -143,13 +374,13 @@ export default {
       );
     },
     isWs2(ch) {
-      return ch === " " || this.isWs1(ch);
+      return ch === "\n" || this.isWs1(ch);
     },
     isOperator(ch) {
-      return specTable.operator[ch] !== undefined;
+      return this.specTable.operator[ch] !== undefined;
     },
     isBoundary(ch) {
-      return specTable.boundary[ch] !== undefined;
+      return this.specTable.boundary[ch] !== undefined;
     },
     error(info) {
       console.log(info);
@@ -158,10 +389,13 @@ export default {
 };
 </script>
 <style lang='less'>
+.table {
+  width: 980px;
+}
 textarea {
   display: inline-block;
-  width: 435px;
-  height: 790px;
+  width: 800px;
+  height: 800px;
   resize: none;
   outline: none;
   //   border: 0;
