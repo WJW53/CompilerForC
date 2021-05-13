@@ -1,6 +1,5 @@
 <template>
   <div class="get-token">
-    <!-- <textarea readonly class="result1" v-model="token"></textarea> -->
     <a-table
       :columns="columnHead"
       :data-source="token"
@@ -178,10 +177,9 @@ export default {
           while (data[this.idx] <= "7" && data[this.idx] >= "0") {
             str += data[this.idx++];
           }
-          if(str.length === 1 && this.isAboutDigit(data[this.idx])){
-            this.syn = 400;//因为是一个单独的0
-          }
-          else if (data[this.idx] === "." && str.length === 1) {
+          if (str.length === 1 && this.isAboutDigit(data[this.idx])) {
+            this.syn = 400; //因为是一个单独的0
+          } else if (data[this.idx] === "." && str.length === 1) {
             flag1 = true; //跳到浮点数判断,0.xxx
           } else if (data[this.idx] === "." && str.length > 1) {
             this.errorUnexpectedNumber();
