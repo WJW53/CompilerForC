@@ -9,12 +9,11 @@
       class="table"
     >
     </a-table>
-    <!-- <textarea readonly class="errors" v-model="errors"></textarea> -->
+    <textarea readonly class="errors" v-model="errors"></textarea>
   </div>
 </template>
 <script>
 import specTable from "@/storage/LexTable.js";
-console.log(specTable);
 const columnHead = [
   {
     title: "TokenName",
@@ -31,17 +30,6 @@ const columnHead = [
   { title: "row", dataIndex: "row", key: "row", width: 200 },
   { title: "column", dataIndex: "column", key: "column" },
 ];
-
-// const dataArr = [];
-// for (let i = 0; i < 100; i++) {
-//   dataArr.push({
-//     key: i,
-//     TokenName: `Edrward ${i}`,
-//     TokenCode: 32,
-//     row: `London Park no. ${i}`,
-//     column:``;
-//   });
-// }
 export default {
   data() {
     return {
@@ -49,13 +37,13 @@ export default {
       specTable,
       row: 1,
       column: 0,
-      idTable: this.$store.state.compilation.idData, //标识符-种别码表
-      errors: "以下是该源代码的错误信息: \n", //每条都是字符串
+      idTable: {}, //标识符-种别码表
+      errors: "以下是净化后的源代码的错误信息: \n", //每条都是字符串
       newTextData: null, //过滤后的新字符串
-      token: this.$store.state.compilation.tokenData,
+      token: [],
       syn: null,
-      idx: 0,//做索引
-      count:0,//做key
+      idx: 0, //做索引
+      count: 0, //做key
     };
   },
   watch: {
@@ -68,20 +56,28 @@ export default {
     //     //   }
     //   },
     // },
+    // "$store.state.compilation.previewData": {
+    //   handler(n, o) {
+    //     console.log('11111');
+    //     this.startGetToken();
+    //   },
+    // },
   },
   created() {
     this.startGetToken();
   },
+  mounted() {},
   methods: {
     startGetToken() {
       this.filterResource(this.$store.state.compilation.previewData);
       this.$store.state.compilation.previewData = this.newTextData;
       let len = this.newTextData.length;
       while (this.syn !== 0 && this.idx < len) {
+        //种别码为0就是出错了
         this.scanner(this.newTextData);
         if (this.syn === 700) {
           //标识符,即id
-          let key = this.token[this.token.length - 1][0];
+          let key = this.token[this.token.length - 1]["TokenName"];
           console.log(key);
           if (this.idTable[key] === undefined) {
             //如果还没存进id表中,就存
@@ -89,6 +85,9 @@ export default {
           }
         }
       }
+      this.$store.state.compilation.idData = this.idTable;
+      console.log(this.idTable);
+      this.$store.state.compilation.tokenData = this.token;
     },
     searchReserve(reserveWord, s) {
       //查找保留字,成功查找则返回对应种别码,否则返回700种别码,即为标识符
@@ -129,7 +128,8 @@ export default {
         str = "", //每次都初始化为"",这个就是token name
         temp = null,
         ch = data[this.idx], //当前字符
-        flag = true; //默认没有错
+        flag = true,
+        len = data.length; //默认没有错
       while (this.isWs2(ch)) {
         //跳过空字符
         if (ch === "\n") {
@@ -141,43 +141,63 @@ export default {
         this.idx++;
         ch = data[this.idx];
       }
+      this.column++;
       if (this.isLetter(data[this.idx])) {
         //开头为字母
         str += data[this.idx++];
         while (this.isLetter(data[this.idx]) || this.isDigit(data[this.idx])) {
           str += data[this.idx++];
         }
-        if (data[i_1] === '"' && data[this.idx] === '"') {
-          //这有问题
-          this.syn = 600; //字符串的种别码
-        } else {
-          this.syn = this.searchReserve(specTable.reserveWord, str); //保留字或者id的种别码
-        }
+        this.syn = this.searchReserve(specTable.reserveWord, str); //保留字或者id的种别码
         console.log(this.syn, "letters");
       } else if (this.isDigit(data[this.idx])) {
-        //数字
+        //数字,但浮点数的我还没写啊
         i_1 = this.idx - 1;
         while (this.isDigit(data[this.idx])) {
           str += data[this.idx++];
         }
-        if (data[i_1] === '"') {
-          while (this.isLetter(data[this.idx])) {
-            str += data[this.idx++];
-          }
-          if (this.idx < data.length - 1) {
-            //因为最后起码还得有个'"'
-            this.syn = 600; //字符串的种别码
-          } else {
-            this.errors += "该字符串没有闭合,程序出错,请修改!!\n";
-          }
-        } else {
-          this.syn = 400; //整数的种别码
-        }
+        this.syn = 400; //整数的种别码
+
         console.log(this.syn, "digit");
       } else if (this.isBoundary(data[this.idx])) {
-        //界符
-        str += data[this.idx++];
+        //界符,记得区分字符串和字符的种别码
+        i_1 = this.idx;
+        let error_row = this.row;
+        str += data[this.idx]; //拼上"
         this.syn = this.specTable.boundary[str];
+        if (this.syn === 308) {
+          //字符串
+          this.idx++; //先后移一位
+          while (data[this.idx] !== '"' && this.idx < len) {
+            str += data[this.idx++];
+          }
+          if (this.idx === len) {
+            flag = false;
+            this.errors +=
+              "没有找到与第" + error_row + "行匹配的双引号,程序出错,请修改!!\n";
+            this.syn = 0;
+            return;
+          } else {
+            str += data[this.idx];
+            this.syn = 600; //字符串
+          }
+        } else if (this.syn === 309) {
+          //字符
+          let ascll_10 = data[++this.idx].charCodeAt();
+          str += data[this.idx];
+          if (ascll_10 < 128 && ascll_10 >= 0 && data[this.idx + 1] === "'") {
+            this.idx++;
+            str += data[this.idx];
+            this.syn = 500; //字符
+          } else {
+            flag = false;
+            this.errors +=
+              "第" + error_row + "行存在非ascll字符,请重新修改!!\n";
+            this.syn = 0;
+            return;
+          }
+        }
+        this.idx++;
         console.log(this.syn, "boundary");
       } else if (this.isOperator(data[this.idx])) {
         //超前搜索,记得回退一格
@@ -243,7 +263,7 @@ export default {
           }
           this.idx++;
         } else if (temp === "<") {
-          //<,<<,<=,<<=
+          //<,<<,<=,<<=,还有头文件<stdio.h>等
           this.idx++; //后移,超前搜索
           if (data[this.idx] === "=") {
             this.syn = 212;
@@ -258,8 +278,25 @@ export default {
               this.syn = 223;
             }
           } else {
-            this.idx--;
-            this.syn = 211;
+            let case1 =
+                data[this.idx + 4] + data[this.idx + 5] + data[this.idx + 6],
+              case2 =
+                data[this.idx + 5] + data[this.idx + 6] + data[this.idx + 7],
+              case3 =
+                data[this.idx + 6] + data[this.idx + 7] + data[this.idx + 8];
+            if (
+              this.isLetter(data[this.idx]) &&
+              (case1 === ".h>" || case2 === ".h>" || case3 === ".h>")
+            ) {
+              this.syn = this.specTable.wordType.headFile;
+              while (data[this.idx] !== ">") {
+                str += data[this.idx++];
+              }
+              str += data[this.idx];
+            } else {
+              this.idx--;
+              this.syn = 211; //<
+            }
           }
           this.idx++;
         } else if (temp === ">") {
@@ -308,7 +345,7 @@ export default {
           if (data[this.idx] === "&") {
             str += data[this.idx];
             this.syn = 217;
-          } else if (data[idx] === "=") {
+          } else if (data[this.idx] === "=") {
             str += data[this.idx];
             this.syn = 226;
           } else {
@@ -330,17 +367,23 @@ export default {
             this.syn = 240;
           }
           this.idx++;
-        } else if (this.idx === data.length) {
+        } else if (this.idx === len) {
           this.syn = 0; //结束了!!
         } else {
           //剩余的直接赋值对应种别码即可
           this.syn = this.specTable.operator[data[this.idx++]];
-          str += data[this.idx];
         }
         console.log(this.syn, "operator");
       } else {
         flag = false;
-        this.errors += "error：there is no exist " + data[this.idx] + "\n";
+        this.errors +=
+          "error：there is no exist " +
+          data[this.idx++] +
+          ",at " +
+          this.row +
+          " row!!\n";
+        this.syn = 0;
+        return;
       }
       if (flag) {
         this.count++;
@@ -394,11 +437,11 @@ export default {
 }
 textarea {
   display: inline-block;
-  width: 800px;
-  height: 800px;
+  width: 1000px;
+  min-height: 100px;
   resize: none;
   outline: none;
-  //   border: 0;
+  border: 0;
   margin-right: 20px;
 }
 </style>

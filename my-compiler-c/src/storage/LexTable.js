@@ -1,6 +1,7 @@
 let specTable = {
 	wordType:
 	{
+		error: 0,
 		reserveWord: 100,
 		operator: 200,
 		boundary: 300,
@@ -10,6 +11,17 @@ let specTable = {
 		id: 700,
 		float: 800,
 		ws: 900,
+		headFile: 1000,
+	},
+	headFile:{
+		"<stdio.h>":1001,
+		"<stdlib.h>":1002,
+		"<math.h>":1003,
+		"<ctype.h>":1004,
+		"<string.h>":1005,
+		"<malloc.h>":1006,
+		"<signal.h>":1007,
+		"<local.h>":1008,
 	},
 	reserveWord:
 	{
