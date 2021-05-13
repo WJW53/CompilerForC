@@ -104,4 +104,7 @@ export default {
 </script>
 
 <style lang="less">
+.middle-button{
+  cursor: not-allowed;
+}
 </style>

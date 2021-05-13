@@ -1,6 +1,5 @@
 <template>
   <div class="get-token">
-    GetToken
     <!-- <textarea readonly class="result1" v-model="token"></textarea> -->
     <a-table
       :columns="columnHead"
@@ -78,15 +77,15 @@ export default {
         if (this.syn === 700) {
           //标识符,即id
           let key = this.token[this.token.length - 1]["TokenName"];
-          console.log(key);
+          // console.log(key);
           if (this.idTable[key] === undefined) {
             //如果还没存进id表中,就存
-            this.idTable[key] = this.token[this.token.length - 1];
+            this.idTable[key] = this.token[this.token.length - 1].TokenCode;
           }
         }
       }
       this.$store.state.compilation.idData = this.idTable;
-      console.log(this.idTable);
+      // console.log(this.idTable);
       this.$store.state.compilation.tokenData = this.token;
     },
     searchReserve(reserveWord, s) {
@@ -149,16 +148,122 @@ export default {
           str += data[this.idx++];
         }
         this.syn = this.searchReserve(specTable.reserveWord, str); //保留字或者id的种别码
-        console.log(this.syn, "letters");
+        // console.log(this.syn, "letters");
       } else if (this.isDigit(data[this.idx])) {
-        //数字,但浮点数的我还没写啊
-        i_1 = this.idx - 1;
-        while (this.isDigit(data[this.idx])) {
+        let flag1 = false,
+          flag2 = false,
+          flag3 = false,
+          flag4 = false;
+        //各种数字
+        if (data[this.idx] !== "0") {
+          //1-9
           str += data[this.idx++];
+          while (this.isDigit(data[this.idx])) {
+            str += data[this.idx++];
+          }
+          ch = data[this.idx];
+          if (this.isAboutDigit(ch)) {
+            this.syn = 410; //10进制整数
+          } else if (ch.toLowerCase() === "e") {
+            //jump
+            flag2 = true; //floatE判断
+          } else if (ch === ".") {
+            flag1 = true;
+          } else {
+            this.errorUnexpectedNumber();
+            return;
+          }
+        } else {
+          str += data[this.idx++];
+          while (data[this.idx] <= "7" && data[this.idx] >= "0") {
+            str += data[this.idx++];
+          }
+          if(str.length === 1 && this.isAboutDigit(data[this.idx])){
+            this.syn = 400;//因为是一个单独的0
+          }
+          else if (data[this.idx] === "." && str.length === 1) {
+            flag1 = true; //跳到浮点数判断,0.xxx
+          } else if (data[this.idx] === "." && str.length > 1) {
+            this.errorUnexpectedNumber();
+            return;
+          } else if (data[this.idx].toLowerCase() === "x") {
+            //16进制
+            str += data[this.idx++];
+            ch = data[this.idx];
+            if (this.isInt16(ch)) {
+              while (this.isInt16(ch)) {
+                str += ch;
+                this.idx++;
+                ch = data[this.idx];
+              }
+              if (str.length > 2 && this.isAboutDigit(ch)) {
+                this.syn = 416; //16进制
+              } else {
+                this.errorUnexpectedNumber();
+                return;
+              }
+            }
+          } else if (this.isAboutDigit(data[this.idx])) {
+            //8进制
+            this.syn = 408;
+          } else {
+            this.errorUnexpectedNumber();
+            return;
+          }
         }
-        this.syn = 400; //整数的种别码
-
-        console.log(this.syn, "digit");
+        //当前字符为'.'
+        if (flag1) {
+          str += data[this.idx++];
+          ch = data[this.idx];
+          if (this.isDigit(ch)) {
+            while (this.isDigit(ch)) {
+              str += data[this.idx++];
+              ch = data[this.idx];
+            }
+            if (this.isAboutDigit(ch)) {
+              this.syn = 800; //浮点数
+            } else if (ch.toLowerCase() === "e") {
+              flag2 = true; //跳到判断科学计数法去floatE
+            } else {
+              this.errorUnexpectedNumber();
+              return;
+            }
+          } else {
+            this.errorUnexpectedNumber();
+            return;
+          }
+        }
+        if (flag2) {
+          //当前字符为e/E
+          str += data[this.idx++];
+          ch = data[this.idx];
+          if (ch === "+" || ch === "-") {
+            str += data[this.idx++];
+            if (this.isDigit(data[this.idx])) {
+              flag3 = true;
+            }
+          } else if (this.isDigit(ch)) {
+            flag3 = true;
+          } else {
+            this.errorUnexpectedNumber();
+            return;
+          }
+        }
+        if (flag3) {
+          str += data[this.idx++];
+          ch = data[this.idx];
+          while (this.isDigit(ch)) {
+            str += data[this.idx++];
+            ch = data[this.idx];
+          }
+          if (this.isAboutDigit(ch)) {
+            this.syn = 803; //floatE
+          } else {
+            this.errorUnexpectedNumber();
+            return;
+          }
+        }
+        // console.log(this.syn, "digit");
       } else if (this.isBoundary(data[this.idx])) {
         //界符,记得区分字符串和字符的种别码
         i_1 = this.idx;
@@ -198,7 +303,7 @@ export default {
           }
         }
         this.idx++;
-        console.log(this.syn, "boundary");
+        // console.log(this.syn, "boundary");
       } else if (this.isOperator(data[this.idx])) {
         //超前搜索,记得回退一格
         //运算符
@@ -373,7 +478,7 @@ export default {
           //剩余的直接赋值对应种别码即可
           this.syn = this.specTable.operator[data[this.idx++]];
         }
-        console.log(this.syn, "operator");
+        // console.log(this.syn, "operator");
       } else {
         flag = false;
         this.errors +=
@@ -387,7 +492,7 @@ export default {
       }
       if (flag) {
         this.count++;
-        console.log(this.syn);
+        // console.log(this.syn);
         this.token.push({
           key: this.count,
           TokenName: str,
@@ -397,15 +502,29 @@ export default {
         });
       }
     },
+    isAboutDigit(ch) {
+      return this.isWs2(ch) || this.isBoundary(ch) || this.isOperator(ch);
+    },
     isDigit(ch) {
       return ch <= "9" && ch >= "0";
     },
-
+    isNo0Digit(ch) {
+      return ch <= "9" && ch > "0";
+    },
+    isInt16(ch) {
+      return (
+        this.isDigit(ch) ||
+        (((ch <= "f" && ch >= "a") || (ch >= "A" && ch <= "F")) && ch !== "_")
+      );
+    },
     isLetter(ch) {
       //字母或者下划线
       return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_";
     },
-
+    errorUnexpectedNumber() {
+      this.errors += "在第" + this.row + "行存在非法数字!!\n";
+      this.syn = 0;
+    },
     isWs1(ch) {
       return (
         ch === " " ||
@@ -417,6 +536,11 @@ export default {
       );
     },
     isWs2(ch) {
+      // if (ch === "\n") {
+      //   this.row++;
+      //   this.column = 0;
+      //   return true;
+      // }
       return ch === "\n" || this.isWs1(ch);
     },
     isOperator(ch) {
@@ -437,7 +561,7 @@ export default {
 }
 textarea {
   display: inline-block;
-  width: 1000px;
+  width: 880px;
   min-height: 100px;
   resize: none;
   outline: none;
