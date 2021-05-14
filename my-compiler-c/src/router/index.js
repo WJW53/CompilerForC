@@ -57,36 +57,27 @@ const routes = [
         },
         component: () => import("../views/page/GetToken.vue"),
       },
-      {
-        path: 'NFA',
-        name: 'NFA',
-        meta: {
-          title: 'NFA',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/NFA.vue"),
-      },
-      {
-        path: 'DFA',
-        name: 'DFA',
-        meta: {
-          title: 'DFA',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/DFA.vue"),
-      },
-      {
-        path: 'DFA_MIN',
-        name: 'DFA_MIN',
-        meta: {
-          title: 'DFA最小化',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/DFA_MIN.vue"),
-      },
+      // {
+      //   path: 'NFA',
+      //   name: 'NFA',
+      //   meta: {
+      //     title: 'NFA',
+      //     icon: 'edit',
+      //     hidden: false,
+      //   },
+      //   component: () => import("../views/page/NFA.vue"),
+      // },
+      
+      // {
+      //   path: 'DFA_MIN',
+      //   name: 'DFA_MIN',
+      //   meta: {
+      //     title: 'DFA最小化',
+      //     icon: 'edit',
+      //     hidden: false,
+      //   },
+      //   component: () => import("../views/page/DFA_MIN.vue"),
+      // },
 
     ]
   },
@@ -102,25 +93,35 @@ const routes = [
     },
     children: [
       {
-        path: 'LL1',
-        name: "LL1",
+        path: 'GetDFA',
+        name: 'GetDFA',
         meta: {
-          title: 'LL1',
+          title: '识别活前缀的DFA',
           icon: 'edit',
           hidden: false,
         },
-        component: () => import("../views/page/LL1.vue"),
+        component: () => import("../views/page/DFA.vue"),
       },
-      {
-        path: 'RecursiveDescent',
-        name: "RecursiveDescent",
-        meta: {
-          title: '递归下降',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/RecursiveDescent.vue"),
-      },
+      // {
+      //   path: 'LL1',
+      //   name: "LL1",
+      //   meta: {
+      //     title: 'LL1',
+      //     icon: 'edit',
+      //     hidden: false,
+      //   },
+      //   component: () => import("../views/page/LL1.vue"),
+      // },
+      // {
+      //   path: 'RecursiveDescent',
+      //   name: "RecursiveDescent",
+      //   meta: {
+      //     title: '递归下降',
+      //     icon: 'edit',
+      //     hidden: false,
+      //   },
+      //   component: () => import("../views/page/RecursiveDescent.vue"),
+      // },
       {
         path: 'LR',
         name: "LR",
@@ -166,16 +167,16 @@ const routes = [
       hidden: false,
     },
     children: [
-      {
-        path: 'top2down',
-        name: "IntermediateCode-1",
-        meta: {
-          title: '自上而下',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/IntermediateCode_1.vue"),
-      },
+      // {
+      //   path: 'top2down',
+      //   name: "IntermediateCode-1",
+      //   meta: {
+      //     title: '自上而下',
+      //     icon: 'edit',
+      //     hidden: false,
+      //   },
+      //   component: () => import("../views/page/IntermediateCode_1.vue"),
+      // },
       {
         path: 'down2top',
         name: "IntermediateCode-2",

@@ -25,6 +25,7 @@ const columnHead = [
     dataIndex: "TokenCode",
     key: "TokenCode",
   },
+  { title: "type", dataIndex: "type", key: "type", width: 200 },
   { title: "row", dataIndex: "row", key: "row", width: 200 },
   { title: "column", dataIndex: "column", key: "column" },
 ];
@@ -42,6 +43,9 @@ export default {
       syn: null,
       idx: 0, //做索引
       count: 0, //做key
+      purifyTextData: "",//暂时没用上这个变量
+      type: "", //每个token的类型
+      timer: null, //定时器
     };
   },
   watch: {
@@ -54,15 +58,21 @@ export default {
     //     //   }
     //   },
     // },
-    // "$store.state.compilation.previewData": {
-    //   handler(n, o) {
-    //     console.log('11111');
-    //     this.startGetToken();
-    //   },
-    // },
+    "$store.state.compilation.previewData": {
+      immediate: true,
+      handler(n, o) {
+        // console.log("1");//不行不行,这样的话每次要过1s才显示出来,太慢了
+        // if (this.timer !== null) {
+        //   clearTimeout(this.timer);
+        // } else {
+        //   this.timer = setTimeout(this.startGetToken, 1000);
+        // }
+        this.startGetToken();
+      },
+    },
   },
   created() {
-    this.startGetToken();
+    // this.startGetToken();
   },
   mounted() {},
   methods: {
@@ -86,6 +96,9 @@ export default {
       this.$store.state.compilation.idData = this.idTable;
       // console.log(this.idTable);
       this.$store.state.compilation.tokenData = this.token;
+      this.$store.state.compilation.purifyTextData = this.purifyTextData;
+      // console.log(this.purifyTextData);
+      this.timer = null;
     },
     searchReserve(reserveWord, s) {
       //查找保留字,成功查找则返回对应种别码,否则返回700种别码,即为标识符
@@ -119,7 +132,7 @@ export default {
       }
       this.newTextData = tempString;
     },
-    //我还有浮点数和字符串没写呢..
+    //核心算法
     scanner(data) {
       //根据DFA状态转换图设计. 分析模块,算法核心
       let i_1 = null, //i的前一位索引
@@ -479,25 +492,58 @@ export default {
         // console.log(this.syn, "operator");
       } else {
         flag = false;
-        this.errors +=
-          "error：there is no exist " +
-          data[this.idx++] +
-          ",at " +
-          this.row +
-          " row!!\n";
+        if (data[this.idx] !== undefined) {
+          //这是为了防止最后一个是\n的话导致不存在的问题
+          //由于我之前把\r\n替换为\n了,所以才出现的这个问题,所以在这里做个判断,避免提示错误信息
+          this.errors +=
+            "error：there is no exist " +
+            data[this.idx++] +
+            ",at " +
+            this.row +
+            " row, " +
+            this.column +
+            " column!!\n";
+        }
         this.syn = 0;
         return;
       }
       if (flag) {
         this.count++;
-        // console.log(this.syn);
+        this.purifyTextData += str;
+        this.whatType(); //更改type
         this.token.push({
           key: this.count,
           TokenName: str,
           TokenCode: this.syn,
           row: this.row,
           column: this.column,
+          type: this.type,
         });
+      }
+    },
+    whatType() {
+      if (this.syn >= 1000) {
+        this.type = "headFile";
+      } else if (this.syn >= 900) {
+        this.type = "ws";
+      } else if (this.syn >= 800) {
+        this.type = "float";
+      } else if (this.syn >= 700) {
+        this.type = "id";
+      } else if (this.syn >= 600) {
+        this.type = "string";
+      } else if (this.syn >= 500) {
+        this.type = "character";
+      } else if (this.syn >= 400) {
+        this.type = "integer";
+      } else if (this.syn >= 300) {
+        this.type = "boundary";
+      } else if (this.syn >= 200) {
+        this.type = "operator";
+      } else if (this.syn >= 100) {
+        this.type = "reserveWord";
+      } else if (this.syn >= 0) {
+        this.type = "error";
       }
     },
     isAboutDigit(ch) {
@@ -520,7 +566,7 @@ export default {
       return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_";
     },
     errorUnexpectedNumber() {
-      this.errors += "在第" + this.row + "行存在非法数字!!\n";
+      this.errors += "在第" + this.row + "行, 第"+this.column+"列, 存在非法数字!!\n";
       this.syn = 0;
     },
     isWs1(ch) {
@@ -535,7 +581,7 @@ export default {
     },
     isWs2(ch) {
       // if (ch === "\n") {
-      //   this.row++;
+      //   this.row++;//这会导致我的行列有问题
       //   this.column = 0;
       //   return true;
       // }

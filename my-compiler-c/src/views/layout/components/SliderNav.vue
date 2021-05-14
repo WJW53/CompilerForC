@@ -29,9 +29,14 @@
           <input id="#txt" type="file" />
           <button file="submit" @click="uploadFile">提交</button>
         </div>
-        <textarea readonly class="preview-file" v-model="previewData"></textarea>
+        <!-- <textarea readonly class="preview-file" v-model="previewData"></textarea> -->
+        <textarea
+          class="preview-file"
+          v-model="$store.state.compilation.previewData"
+        ></textarea>
       </div>
-      <div class="middle-button" @click="changeFun">转换后代码=></div>
+      <!-- <div class="middle-button" @click="changeFun">转换后代码=></div> -->
+      <div class="middle-button">转换后代码=></div>
       <div class="right-show">
         <router-view></router-view>
       </div>
@@ -61,11 +66,13 @@ export default {
     // }),
     // 方法三(不设置别名，直接使用this.cityID即可)：
     // ...mapState(['cityID','city']),
-
-    ...mapState({
-      previewData: (state) => state.compilation.previewData,
-      textData: (state) => state.compilation.textData,
-    }),
+    // ...mapState({
+    //   previewData: (state) => state.compilation.previewData,
+    //   textData: (state) => state.compilation.textData,
+    // }),
+  },
+  created() {
+    
   },
   methods: {
     changeFun() {
@@ -74,7 +81,7 @@ export default {
         this.$store.state.changeCode = true;
       }
     },
-    ...mapActions(["changePreviewData", "changeTextData"]),
+    // ...mapActions(["changePreviewData", "changeTextData"]),
     toggleCollapsed() {
       this.$store.dispatch("changeCollapsed");
     },
@@ -93,8 +100,11 @@ export default {
           //注意这样获取的文本里的回车是\r\n而不是单独的一个\n
           //也就是说我们敲了一个回车代表两个字符长度,不要统计出错了哦,所以这里我替换为一个\n
           let value = evt.target.result.replace(/\r\n/g, "\n");
-          _this.changePreviewData({ value }).then(() => {}); //这是从mapAction中映射出来的方法
-          _this.changeTextData({ value }).then(() => {});
+          // _this.changePreviewData({ value }).then(() => {}); //这是从mapAction中映射出来的方法
+          // _this.changeTextData({ value }).then(() => {});
+          _this.$store.state.compilation.textData = value;
+          _this.$store.state.compilation.previewData = value;
+          document.getElementById("#txt").value = "";
         };
       }
     },
@@ -104,7 +114,7 @@ export default {
 </script>
 
 <style lang="less">
-.middle-button{
+.middle-button {
   cursor: not-allowed;
 }
 </style>
