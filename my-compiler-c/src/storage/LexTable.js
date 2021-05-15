@@ -14,26 +14,27 @@ let specTable = {
 		ws: 900,
 		headFile: 1000,
 	},
-	integer:{
-		int10:410,
-		int8:408,
-		int16:416,
-		int2:402,
+	integer: {
+		int10: 410,
+		int8: 408,
+		int16: 416,
+		int2: 402,
 	},
-	float:{
-		float:801,
-		double:802,
-		floatE:803
+	float: {
+		float: 801,
+		double: 802,
+		floatE: 803
 	},
-	headFile:{
-		"<stdio.h>":1001,
-		"<stdlib.h>":1002,
-		"<math.h>":1003,
-		"<ctype.h>":1004,
-		"<string.h>":1005,
-		"<malloc.h>":1006,
-		"<signal.h>":1007,
-		"<local.h>":1008,
+	headFile: {
+		"<stdio.h>": 1001,
+		"<stdlib.h>": 1002,
+		"<math.h>": 1003,
+		"<ctype.h>": 1004,
+		"<string.h>": 1005,
+		"<malloc.h>": 1006,
+		"<signal.h>": 1007,
+		"<local.h>": 1008,
+		"<window.h>": 1009,
 	},
 	reserveWord:
 	{

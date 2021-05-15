@@ -1,8 +1,17 @@
-export default {
-    myProduction : `Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
+```js
+//::=代表定义为,在两个符号之间用空格隔开,@代表或的关系,stce代表语句(sentence嘛),ε代表空串
+//我消除了左递归和回溯,也形成了一些算符优先
+//还得把我们得到的token字段映射到最底层的产生式;到时得遍历,重定义,处理数据结构
+//比如标识符,数字,字符,字符串啥的,需要重定义;
+//函数声明时可不写形参名,只写参数类型,但我是做成了必须有形参名,即ID.你们也可做成可选态
+
+//开写:
+//程序初始相关的
+Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
 HeadFiles::=# include HeadFile
 HeadFile::=<stdio.h>@<stdlib.h>@<math.h>@<ctype.h>@<string.h>@<malloc.h>@<signal.h>@<local.h>@<window.h>
 Sentence::=DeclarationStce@ExecuteStce
+//声明语句相关的
 DeclarationStce::=ValueDeclaration@FunctionDeclaration@ε
 ValueDeclaration::=ConstDeclaration@VariableDeclaration
 ConstDeclaration::=const ConstType ConstDeclarationList
@@ -20,9 +29,11 @@ FunctionType::=void@boolean@char@int@float@double
 FuncDeclareParameterList::=FuncDeclareParameter@ε
 FuncDeclareParameter::=VariableType IDentifier FuncDeclareParameter1
 FuncDeclareParameter1::=, FuncDeclareParameter@ε
+//执行语句相关的
 ExecuteStce::=DataProcessStce@ControlStce@CompoundStce
 DataProcessStce::=AssignStce@FunctionCallStce
 AssignStce::=AssignExpr;
+//表达式
 Expression::=ArithmeticExpr@RelationalExpr@BooleanExpr@AssignExpr
 ArithmeticExpr::=Item ArithmeticExpr1
 ArithmeticExpr1::=+ Item ArithmeticExpr@- Item ArithmeticExpr@ε
@@ -43,6 +54,7 @@ BooleanItem::=BooleanFactor BooleanItem1
 BooleanItem1::=&& BooleanFactor BooleanItem@ε
 BooleanFactor::=ArithmeticExpr@RelationalExpr@! BooleanExpr
 AssignExpr::=IDentifier = Expression
+//接着写执行语句的函数调用语句
 FunctionCallStce::=FunctionCall;
 ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce
 CompoundStce::={ SentenceList }
@@ -64,9 +76,10 @@ RETURNStce::=return RETURNStce1
 RETURNStce1::=;@Expression ;
 BREAKStce::=break;
 CONTINUEStce::=continue;
+//关于函数的
 FunctionBlock::=FunctionDefinition FunctionBlock@ε
 FunctionDefinition::=FunctionType IDentifier ( FuncDefinitionParameterList ) CompoundStce
 FuncDefinitionParameterList::=FuncDefinitionParameter@ε
 FuncDefinitionParameter::=VariableType IDentifier FuncDefinitionParameter1
-FuncDefinitionParameter1::=, FuncDefinitionParameter@ε`
-}
+FuncDefinitionParameter1::=, FuncDefinitionParameter@ε
+```
