@@ -7,6 +7,7 @@
 
 //开写:
 //程序初始相关的
+StartProgram::=Program
 Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
 HeadFiles::=# include HeadFile
 HeadFile::=<stdio.h>@<stdlib.h>@<math.h>@<ctype.h>@<string.h>@<malloc.h>@<signal.h>@<local.h>@<window.h>

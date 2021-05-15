@@ -19,7 +19,11 @@ export default new Vuex.Store({
       firstData:[],
       followData:[],
       dfaData:[],
-      
+      nonTerminal: [], //非终结符
+      terminal: [],
+      productRight: [], //二维数组
+      // productMap: new Map(),//map记录了顺序
+      productMap: {},//对象是按ascll排序的
     },
     changeCode: false,
   },

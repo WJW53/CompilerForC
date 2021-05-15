@@ -1,5 +1,6 @@
 export default {
-    myProduction : `Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
+    myProduction : `StartProgram::=Program
+Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
 HeadFiles::=# include HeadFile
 HeadFile::=<stdio.h>@<stdlib.h>@<math.h>@<ctype.h>@<string.h>@<malloc.h>@<signal.h>@<local.h>@<window.h>
 Sentence::=DeclarationStce@ExecuteStce
@@ -8,7 +9,7 @@ ValueDeclaration::=ConstDeclaration@VariableDeclaration
 ConstDeclaration::=const ConstType ConstDeclarationList
 ConstType::=char@int@float@double
 ConstDeclarationList::=IDentifier = CONST ConstDeclarationList1
-ConstDeclarationList1::= ConstDeclarationList@ε
+ConstDeclarationList1::=ConstDeclarationList@ε
 VariableDeclaration::=VariableType VariableDeclarationList
 VariableType::=char@int@float@double
 VariableDeclarationList::=SingleVariableDeclaration VariableDeclarationList1
@@ -22,7 +23,7 @@ FuncDeclareParameter::=VariableType IDentifier FuncDeclareParameter1
 FuncDeclareParameter1::=, FuncDeclareParameter@ε
 ExecuteStce::=DataProcessStce@ControlStce@CompoundStce
 DataProcessStce::=AssignStce@FunctionCallStce
-AssignStce::=AssignExpr;
+AssignStce::=AssignExpr ;
 Expression::=ArithmeticExpr@RelationalExpr@BooleanExpr@AssignExpr
 ArithmeticExpr::=Item ArithmeticExpr1
 ArithmeticExpr1::=+ Item ArithmeticExpr@- Item ArithmeticExpr@ε
@@ -43,7 +44,7 @@ BooleanItem::=BooleanFactor BooleanItem1
 BooleanItem1::=&& BooleanFactor BooleanItem@ε
 BooleanFactor::=ArithmeticExpr@RelationalExpr@! BooleanExpr
 AssignExpr::=IDentifier = Expression
-FunctionCallStce::=FunctionCall;
+FunctionCallStce::=FunctionCall ;
 ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce
 CompoundStce::={ SentenceList }
 SentenceList::=Sentence SentenceList1
@@ -63,7 +64,7 @@ LoopIFStce1::=else LoopStce@ε
 RETURNStce::=return RETURNStce1
 RETURNStce1::=;@Expression ;
 BREAKStce::=break;
-CONTINUEStce::=continue;
+CONTINUEStce::=continue ;
 FunctionBlock::=FunctionDefinition FunctionBlock@ε
 FunctionDefinition::=FunctionType IDentifier ( FuncDefinitionParameterList ) CompoundStce
 FuncDefinitionParameterList::=FuncDefinitionParameter@ε

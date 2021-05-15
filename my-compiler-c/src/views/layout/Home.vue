@@ -22,10 +22,11 @@ export default {
       key: new Date().getTime(),
       myProduction: obj.myProduction,
       productionTable: [],
-      nonTerminal: [], //非终结符
-      terminal: [],
-      productRight: [],//三维数组
-      productMap: new Map(),
+      nonTerminal: this.$store.state.compilation.nonTerminal, //非终结符
+      terminal: this.$store.state.compilation.terminal,
+      productRight: this.$store.state.compilation.productRight, //三维数组
+      // productMap: new Map(),//map记录了顺序
+      productMap: this.$store.state.compilation.productMap,//对象是按ascll排序的
     };
   },
   created() {
@@ -41,11 +42,12 @@ export default {
       for (let j = 0, len2 = this.productRight[i].length; j < len2; j++) {
         this.productRight[i][j] = this.productRight[i][j].split(" ");
       }
-      this.productMap.set(temp[0], this.productRight[i]);
+      // this.productMap.set(temp[0], this.productRight[i]);
+      this.productMap[temp[0]] = this.productRight[i];
     }
     // console.log(this.nonTerminal);
     // console.log(this.productRight);
-    console.log(this.productMap);
+    // console.log(this.productMap);
   },
   methods: {},
   // watch: {
