@@ -18,12 +18,12 @@ ValueDeclaration::=ConstDeclaration@VariableDeclaration
 ConstDeclaration::=const ConstType ConstDeclarationList
 ConstType::=char@int@float@double
 ConstDeclarationList::=IDentifier = CONST ConstDeclarationList1
-ConstDeclarationList1::= ConstDeclarationList@ε
+ConstDeclarationList1::=ConstDeclarationList@ε
 VariableDeclaration::=VariableType VariableDeclarationList
 VariableType::=char@int@float@double
 VariableDeclarationList::=SingleVariableDeclaration VariableDeclarationList1
 SingleVariableDeclaration::=VARIABLE@SingleVariableDeclaration1
-SingleVariableDeclaration1::== Expression@ε
+SingleVariableDeclaration1::==Expression@ε
 VariableDeclarationList1::=;@, VariableDeclarationList
 FunctionDeclaration::=FunctionType IDentifier ( FuncDeclareParameterList ) ;
 FunctionType::=void@boolean@char@int@float@double
@@ -33,7 +33,7 @@ FuncDeclareParameter1::=, FuncDeclareParameter@ε
 //执行语句相关的
 ExecuteStce::=DataProcessStce@ControlStce@CompoundStce
 DataProcessStce::=AssignStce@FunctionCallStce
-AssignStce::=AssignExpr;
+AssignStce::=AssignExpr ;
 //表达式
 Expression::=ArithmeticExpr@RelationalExpr@BooleanExpr@AssignExpr
 ArithmeticExpr::=Item ArithmeticExpr1
@@ -56,7 +56,7 @@ BooleanItem1::=&& BooleanFactor BooleanItem@ε
 BooleanFactor::=ArithmeticExpr@RelationalExpr@! BooleanExpr
 AssignExpr::=IDentifier = Expression
 //接着写执行语句的函数调用语句
-FunctionCallStce::=FunctionCall;
+FunctionCallStce::=FunctionCall ;
 ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce
 CompoundStce::={ SentenceList }
 SentenceList::=Sentence SentenceList1
@@ -75,8 +75,8 @@ LoopIFStce::=if ( Expression ) LoopStce LoopIFStce1
 LoopIFStce1::=else LoopStce@ε
 RETURNStce::=return RETURNStce1
 RETURNStce1::=;@Expression ;
-BREAKStce::=break;
-CONTINUEStce::=continue;
+BREAKStce::=break ;
+CONTINUEStce::=continue ;
 //关于函数的
 FunctionBlock::=FunctionDefinition FunctionBlock@ε
 FunctionDefinition::=FunctionType IDentifier ( FuncDefinitionParameterList ) CompoundStce

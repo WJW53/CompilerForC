@@ -23,6 +23,7 @@ export default {
       visitedState: [], //存储做完了闭包和状态转换的状态
     };
   },
+  //裂开裂开,LR0写完可识别活前缀的DFA后,我判断出有冲突,要改用LR1了,往前探索一步应该就够了
   created() {
     // console.log(this.nonTerminal);
     // console.log(this.productRight);
@@ -99,7 +100,8 @@ export default {
     getClosure(collection) {
       //collection是一个集合,里面有S'->`S等.. Closure(I)是this.closureC[index]
       //保存已经查完的产生式的左部的名字
-      let index = "State" + ++this.stateCnt; //第n个状态/项目集,一个状态中一般会有多个项目
+      ++this.stateCnt;
+      let index = "State" + this.stateCnt; //第n个状态/项目集,一个状态中一般会有多个项目
       // this.closureC[index] = {};//不行,这样没有响应式
       this.$set(this.closureC, index, {});
       // console.log('1111');
@@ -114,7 +116,7 @@ export default {
           for (let j = 0; j < item.length; j++) {
             let idx = item.indexOf("`"),
               nonTm = item[idx + 1];
-            console.log(nonTm);
+            // console.log(nonTm);
             // console.log(this.nonTerminal);
             if (
               idx > -1 &&
@@ -122,13 +124,13 @@ export default {
               nonTm !== undefined
             ) {
               //找到了A->...`B...,现在要去找B->`γ
+              //3.更新Statei,从里面继续重复执行上述两步,知道没有更多的项目能加入Closure(I)中
               this.getSonClosure(nonTm, index); //但是它不能继续找它本身了!!
             }
           }
         }
       }
-      console.log(this.closureC);
-      //3.更新Statei,从里面继续重复执行上述两步,知道没有更多的项目能加入Closure(I)中
+      // console.log(this.closureC);
     },
     //得到状态I的所有的后继文法符号,注意边界和只有一个`的情况
     getStateIFollowGramSymbols(stateI) {
@@ -207,8 +209,8 @@ export default {
           } else {
             //遍历比较所有的产生式是否相同,注意二维数组,我不是引用值,所以每次要拍平比较
             //现在问题的本质就是比较这个二维数组的内容是否相同,顺序可能不一致噢
-            let newArr2D = newObj[newKey2];
-            curArr2D = curObj[newKey2];
+            let newArr2D = newObj[newKey2],
+              curArr2D = curObj[newKey2];
             if (newArr2D.length !== curArr2D.length) {
               //先保证同一个非终结符的产生式条数一致
               break;
@@ -250,10 +252,12 @@ export default {
       let flag1 = 0,
         flag2 = 0; //移进,规约,默认无冲突
       for (let key in this.closureC[stateI]) {
+        // console.log(key);
         let arr = this.closureC[stateI][key]; //二维数组
         for (let arr1 of arr) {
           let idx = arr1.indexOf("`");
-          if (idx === arr1.length - 1) {
+          if (idx === arr1.length - 1 && idx !== 0) {
+            //认为A->`是不可达状态
             flag2++; //规约项目+1
           } else {
             if (!this.nonTerminal.includes(arr1[idx + 1])) {
@@ -262,8 +266,9 @@ export default {
           }
         }
       }
+      // console.log(flag1,flag2);
       if ((flag1 > 0 && flag2 > 0) || flag2 > 1) {
-        console.log(this.closureC[stateI]);
+        console.log(stateI, this.closureC[stateI]);
         return false; //冲突
       } else {
         return true;
@@ -288,7 +293,7 @@ export default {
             //如果该状态还没做状态转换
             this.getStateIFollowGramSymbols(stateI);
             let gramSymbolsArr = this.followGramSymbols[stateI];
-            console.log(gramSymbolsArr);
+            // console.log(gramSymbolsArr);
             for (let X of gramSymbolsArr) {
               this.go_i_x(stateI, X); //会产生新的状态
             }
@@ -297,6 +302,11 @@ export default {
         len2 = this.stateCnt;
       } while (len1 < len2); // || this.visitedState.length < this.stateCnt + 1
       console.log(this.goIXTable);
+      console.log(this.closureC);
+      for (let i = 0; i <= this.stateCnt; i++) {
+        // console.log(this.canLR0("State" + i));
+        this.canLR0("State" + i);
+      }//裂开了,需要用LR1,文法里有4个状态都出现了同时出现移进-规约的冲突
     },
   },
 };
