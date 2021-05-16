@@ -16,6 +16,7 @@ export default new Vuex.Store({
       tokenData: [],//词法分析后的结果,每条为数组[token,种别码,行,列],不能用对象,因为对象属性名和值唯一的,而我们这里可能重复属性名!!
       purifyTextData:"",//净化后的源代码
       idData: {},//id表
+      tokenToGram:[],
       firstData:[],
       followData:[],
       dfaData:[],

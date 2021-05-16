@@ -43,9 +43,10 @@ export default {
       syn: null,
       idx: 0, //做索引
       count: 0, //做key
-      purifyTextData: "",//暂时没用上这个变量
+      purifyTextData: "", //暂时没用上这个变量
       type: "", //每个token的类型
       timer: null, //定时器
+      tokenToGram: [], //token改造的当前程序的语法单位流
     };
   },
   watch: {
@@ -99,6 +100,11 @@ export default {
       this.$store.state.compilation.purifyTextData = this.purifyTextData;
       // console.log(this.purifyTextData);
       this.timer = null;
+      for (let i = 0; i < this.token.length; i++) {
+        this.changeTypeForGram(this.token[i]);
+      }
+      this.$store.state.compilation.tokenToGram = this.tokenToGram;
+      console.log(this.tokenToGram);
     },
     searchReserve(reserveWord, s) {
       //查找保留字,成功查找则返回对应种别码,否则返回700种别码,即为标识符
@@ -521,6 +527,25 @@ export default {
         });
       }
     },
+    changeTypeForGram(token) {
+      let type = token.type;
+      if (type === "integer" || type === "float") {
+        this.tokenToGram.push("Digits");
+      } else if (
+        type === "operator" ||
+        type === "boundary" ||
+        type === "reserveWord" ||
+        type === "headFile"
+      ) {
+        this.tokenToGram.push(token.TokenName);
+      } else if (type === "string") {
+        this.tokenToGram.push("String");
+      } else if (type === "character") {
+        this.tokenToGram.push("Character");
+      } else if (type === "id") {
+        this.tokenToGram.push("IDentifier");
+      }
+    },
     whatType() {
       if (this.syn >= 1000) {
         this.type = "headFile";
@@ -566,7 +591,8 @@ export default {
       return (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z") || ch === "_";
     },
     errorUnexpectedNumber() {
-      this.errors += "在第" + this.row + "行, 第"+this.column+"列, 存在非法数字!!\n";
+      this.errors +=
+        "在第" + this.row + "行, 第" + this.column + "列, 存在非法数字!!\n";
       this.syn = 0;
     },
     isWs1(ch) {
