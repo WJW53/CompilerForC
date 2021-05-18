@@ -7,16 +7,16 @@ export default {
   components: {},
   data() {
     return {
+      firstData: this.$store.state.compilation.firstData,
+      followData: this.$store.state.compilation.followData,
       nonTerminal: this.$store.state.compilation.nonTerminal, //非终结符
       terminal: this.$store.state.compilation.terminal,
       productRight: this.$store.state.compilation.productRight, //二维数组
-      // productMap: new Map(),//map记录了顺序
       productMap: this.$store.state.compilation.productMap, //对象是按ascll排序的
       allProject: {},
-      // allProject: new Map(),
-      closureC: {}, //项目集规范族(就是所有项目集的集合)
+      closureC: {}, //项目集规范族(就是所有项目集的集合 / 所有状态的集合)
       stateCnt: -1, //状态的个数,从零开始
-      flagLR0: true, //有一个冲突就全都冲突
+      flagLR0: true, //有一个状态冲突就为false
       // dfaPath:{},
       goIXTable: {}, //{State0:{A:State1,b:State2},State1:{C:State3}}
       followGramSymbols: {}, //存储每个状态I的后继文法符号
@@ -59,9 +59,55 @@ export default {
       console.log(this.allProject);
       console.log(count);
     },
+    getFirst() {},
+    getFollow(A) {
+      //非终结符A,??这到底需不需要考虑undefined,也就是第一次的情况呢???
+      if (A === "StartProgram") {
+        //1.如果A是开始符号的话
+        this.followData[A] = ["#"];
+      } else {
+        this.followData[A] = [];
+      }
+      let obj = this.productMap;
+      //2.形如A->αBβ,β只要非空其他均可,α可以为空;将First(β)\{ε}即First(β)除去ε,加入Follow(B)中
+
+      for (let key in obj) {
+        for (let arr of obj[key]) {
+          let idx = arr.indexOf(A);
+          if (idx > -1 && idx !== arr.length - 1) {
+            //这里加一个判断β经有限次推导能否推出ε
+            let beita = arr[idx + 1],
+              canToε = false;
+            while (obj[beita] !== undefined && canToε === false) {
+              for (let a1 of obj[beita]) {
+                if (a1.length === 1 && a1[0] === "ε") {
+                  canToε = true;
+                  break;
+                }
+              }
+            }
+            //3.形如A->αB(α可以是终结符或者非终结符或者直接为空)或者A->αBβ是一个产生式且β=*>ε
+            //将Follow(A)加入到Follow(B)中
+            if (canToε === false) {
+              let temp = this.firstData[arr[idx + 1]].filter(
+                (item) => item !== "ε"
+              );
+              this.followData[A].push(...temp);
+            } else {
+              this.followData[A].push(...this.followData[key]);
+            }
+          } else if (idx === arr.length - 1) {
+            this.followData[A].push(...this.followData[key]);
+          }
+        }
+      }
+    },
     //leftName为产生式左部是一个非终结符,stateI是当前状态的编号
     getSonClosure(leftName, stateI) {
-      this.closureC[stateI][leftName] = []; //先初始化
+      // console.log(leftName);
+      if (this.closureC[stateI][leftName] === undefined) {
+        this.closureC[stateI][leftName] = []; //先初始化
+      }
       let similar = this.allProject[leftName];
       // console.log(similar);
       let tempArr = this.closureC[stateI][leftName];
@@ -306,7 +352,7 @@ export default {
       for (let i = 0; i <= this.stateCnt; i++) {
         // console.log(this.canLR0("State" + i));
         this.canLR0("State" + i);
-      }//裂开了,需要用LR1,文法里有4个状态都出现了同时出现移进-规约的冲突
+      } //裂开了,需要用LR1,文法里有4个状态都出现了同时出现移进-规约的冲突
     },
   },
 };

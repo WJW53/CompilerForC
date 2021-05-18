@@ -45,9 +45,9 @@ export default {
       // this.productMap.set(temp[0], this.productRight[i]);
       this.productMap[temp[0]] = this.productRight[i];
     }
-    // console.log(this.nonTerminal);
+    console.log(this.nonTerminal);
     // console.log(this.productRight);
-    // console.log(this.productMap);
+    console.log(this.productMap);
   },
   methods: {},
   // watch: {

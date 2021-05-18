@@ -21,10 +21,9 @@ export default new Vuex.Store({
       followData:[],
       dfaData:[],
       nonTerminal: [], //非终结符
-      terminal: [],
+      terminal: [],//终结符,没必要写这个..
       productRight: [], //二维数组
-      // productMap: new Map(),//map记录了顺序
-      productMap: {},//对象是按ascll排序的
+      productMap: {},//{}是按ascll排序的,可以用new Map(),它是有序的但是遍历需要迭代器
     },
     changeCode: false,
   },

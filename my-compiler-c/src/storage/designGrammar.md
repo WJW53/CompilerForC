@@ -41,7 +41,7 @@ ArithmeticExpr1::=+ Item ArithmeticExpr@- Item ArithmeticExpr@ε
 Item::=Factor Item1
 Item1::=* Factor Item@/ Factor Item@% Factor Item@ε
 Factor::=( ArithmeticExpr )@CONST@VARIABLE@FunctionCall
-CONST::=NumericalConst@CharacterConst
+CONST::=Digits@Character
 VARIABLE::=IDentifier
 FunctionCall::=IDentifier ( RealReferenceList )
 RealReferenceList::=RealReference@ε
@@ -54,7 +54,8 @@ BooleanExpr1::=|| BooleanItem BooleanExpr@ε
 BooleanItem::=BooleanFactor BooleanItem1
 BooleanItem1::=&& BooleanFactor BooleanItem@ε
 BooleanFactor::=ArithmeticExpr@RelationalExpr@! BooleanExpr
-AssignExpr::=IDentifier = Expression
+AssignExpr::=IDentifier AssignOperator Expression
+AssignOperator::==@+=@-=@*=@/=@%=@>>=@<<=@&=@|=
 //接着写执行语句的函数调用语句
 FunctionCallStce::=FunctionCall ;
 ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce
@@ -83,4 +84,24 @@ FunctionDefinition::=FunctionType IDentifier ( FuncDefinitionParameterList ) Com
 FuncDefinitionParameterList::=FuncDefinitionParameter@ε
 FuncDefinitionParameter::=VariableType IDentifier FuncDefinitionParameter1
 FuncDefinitionParameter1::=, FuncDefinitionParameter@ε
+//补充一些其他的,跟终结符相关的,还有读写语句,赋值操作符等
+PrintfStce::=printf ( STRING PrintfID ) ;
+PrintfID::=, IDentifier@PrintfID1
+PrintfID1::=PrintfID@ε
+ScanfStce::=scanf ( STRING ScanfID) ;
+ScanfID::=, & IDentifier@ScanfID1
+ScanfID1::=ScanfID@ε
+Zero::=0
+NonZero::=1@2@3@4@5@6@7@8@9
+Digit::=Zero@NonZero
+Digits::=Digit Digits1
+Digits1::=Digits@ε
+Character::=_$a$b$c$d$e$f$g$h$i$j$k$l$m$n$o$p$q$r$s$t$u$v$w$x$y$z$A$B$C$D$E$F$G$H$I$J$K$L$M$N$O$P$Q$R$S$T$U$V$W$X$Y$Z
+IntergerPart::=NonZero Digits1@Zero
+OptionalFraction::=. Digits@ε
+OptionalExponent::=ExponentE ExponentSymbols Digits@ε
+ExponentE::=e@E
+ExponentSymbols::=+@-@ε
+FloatNumber::=IntergerPart OptionalFraction OptionalExponent
+Number::=IntergerPart@FloatNumber
 ```

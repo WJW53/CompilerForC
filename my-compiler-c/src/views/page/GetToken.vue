@@ -103,7 +103,7 @@ export default {
       for (let i = 0; i < this.token.length; i++) {
         this.changeTypeForGram(this.token[i]);
       }
-      this.$store.state.compilation.tokenToGram = this.tokenToGram;
+      // this.$store.state.compilation.tokenToGram = this.tokenToGram;
       console.log(this.tokenToGram);
     },
     searchReserve(reserveWord, s) {
@@ -530,7 +530,7 @@ export default {
     changeTypeForGram(token) {
       let type = token.type;
       if (type === "integer" || type === "float") {
-        this.tokenToGram.push("Digits");
+        this.tokenToGram.push("Number");
       } else if (
         type === "operator" ||
         type === "boundary" ||
