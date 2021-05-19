@@ -17,18 +17,27 @@ export default {
       closureC: {}, //项目集规范族(就是所有项目集的集合 / 所有状态的集合)
       stateCnt: -1, //状态的个数,从零开始
       flagLR0: true, //有一个状态冲突就为false
-      // dfaPath:{},
       goIXTable: {}, //{State0:{A:State1,b:State2},State1:{C:State3}}
+      ixList: [],
       followGramSymbols: {}, //存储每个状态I的后继文法符号
       visitedState: [], //存储做完了闭包和状态转换的状态
     };
   },
   //裂开裂开,LR0写完可识别活前缀的DFA后,我判断出有冲突,要改用LR1了,往前探索一步应该就够了
+  //但是后来我发现我就四五个状态有移进-规约冲突,且都往前探查一步即可区分,于是针对冲突的状态做处理即可
+  //所以我在LR0基础上增加了SLR1
   created() {
     // console.log(this.nonTerminal);
     // console.log(this.productRight);
     // console.log(this.productMap);
+    this.getFirst();
     this.constructDfaToIdentifyViablePrefix();
+    let str = "以下是状态转换表: \n\n";
+    for (let arr of this.ixList) {
+      str = str + arr.join("  ") + "\n";
+    }
+    // console.log(this.ixList);
+    this.$store.state.compilation.previewData = str;
   },
   methods: {
     //得到所有项目
@@ -57,23 +66,25 @@ export default {
         }
       }
       console.log(this.allProject);
-      console.log(count);
+      console.log("扩广文法总共" + count + "个项目");
     },
     //文法符号A能否经过有限次推导,推出空
     //我写的文法若A能推出空,则它前面必有其他的产生式
     //需要避免循环推导问题吗?可用缓存处理,不过我这没必要吧,因为我文法不会造成这种状况
     isACanToEmpty(A) {
+      //说明这个函数有问题啊
       let obj = this.productMap;
       let flag1 = false,
         flag2 = false,
         canToε = flag1 || flag2;
-      while (obj[A] !== undefined && canToε === false) {
+      while (obj[A]!==undefined && canToε === false) {
         for (let a1 of obj[A]) {
           if (canToε === false) {
             if (a1.length === 1 && a1[0] === "ε") {
               flag1 = true;
             } else if (this.nonTerminal.includes(a1[0])) {
               //更新beita,递归找
+              // console.log(a1[0]);
               flag2 = this.isACanToEmpty(a1[0]);
             }
           } else {
@@ -81,10 +92,79 @@ export default {
           }
           canToε = flag1 || flag2;
         }
+        return canToε; //这是因为循环做完了
       }
       return canToε;
     },
-    getFirst() {},
+    //有个大问题!可能右部的首非终结符,它自己当前还没求first/follow!那得到的肯定是空数组啊
+    getFirst() {
+      let obj = this.productMap;
+      // console.log(obj);
+      for (let key in obj) {
+        //我这样只是加了非终结符啊,终结符呢
+        this.$set(this.firstData, key, {});
+        // this.$set(this.firstData[key], "all", []);
+        this.firstData[key].all = [];
+      }
+      // this.firstData.ArithmeticExpr.all.push(2);
+      console.log("First集为: ",this.firstData); //没问题,可以响应式
+      for (let key in obj) {
+        let arr2d = obj[key];
+        for (let arr of arr2d) {
+          let str = arr.join(" ");
+          if (this.firstData[key][str] === undefined) {
+            this.firstData[key][str] = [];
+          }
+          if (this.nonTerminal.includes(arr[0]) === false) {
+            this.firstData[key][str].push(arr[0]);
+            this.$set(this.firstData, arr[0], {}); //顺便在非终结符时直接求First(A)
+            this.firstData[arr[0]].all = [arr[0]];
+            // console.log("1", this.firstData[key]);
+          } else {
+            //非终结符时
+            //形如A->Xα,X属于非终结符,这个all就是存放着First(A),即A的候选式的去重总和,是Array
+            let temp = this.getNoεOfArr(this.firstData[arr[0]].all); //因为这会还没求出arr[0]的first
+            this.firstData[key][str].push(...temp);
+            // console.log(temp);
+            // console.log(arr);
+            //以下是P99 3.1 步骤(4)
+            for (let i = 0, len = arr.length; i < len; i++) {
+              //在我的产生式二维数组里,不会单独出现一条形如A:[["ε"]]的,它起码还有别的产生式
+              let flag = this.isACanToEmpty(arr[i]);
+              if (i > 0 && flag === false && i < len - 1) {
+                //到这里不能推出空了
+                // console.log(arr[i] + "不能经过有限次推导推出空");
+                if (this.nonTerminal.includes(arr[i]) === false) {
+                  //终结符的时候,且是第一次
+                  if (this.firstData[arr[i]] === undefined) {
+                    this.$set(this.firstData, arr[i], {});
+                    this.firstData[arr[i]].all = [arr[i]];
+                  }
+                }
+                // console.log(this.firstData[arr[i]]);
+                let temp1 = this.getNoεOfArr(this.firstData[arr[i]].all);
+                // console.log(temp1);
+                this.firstData[key][str].push(...temp1);
+              } else if (flag === true && i === len - 1) {
+                // console.log(arr + "可以经过有限次推导推出空");
+                this.firstData[key][str].push("ε");
+              }
+            }
+            // console.log("3", this.firstData[key]);
+          }
+        }
+
+        for (let k in this.firstData[key]) {
+          if (k !== "all") {
+            this.firstData[key].all.push(...this.firstData[key][k]);
+          }
+        }
+        // console.log(this.firstData[key]);
+      }
+      console.log(this.firstData);
+    },
+    getAllFirst() {},
+    getAllFollow() {},
     getFollow(A) {
       //非终结符A,??这到底需不需要考虑undefined,也就是第一次的情况呢???
       if (A === "StartProgram") {
@@ -103,7 +183,7 @@ export default {
           //若A后紧跟终结符且不是空
           if (idx > -1) {
             if (idx !== arr.length - 1) {
-              //A不是最后一位
+              //A不是最后一位且后面有一个终结符
               if (
                 !this.nonTerminal.includes(arr[idx + 1]) &&
                 arr[idx + 1] !== "ε"
@@ -137,6 +217,12 @@ export default {
           }
         }
       }
+    },
+    getUniqueArr(arr) {
+      return Array.from(new Set(arr));
+    },
+    getNoεOfArr(arr) {
+      return arr.filter((item) => item !== "ε");
     },
     //leftName为产生式左部是一个非终结符,stateI是当前状态的编号
     getSonClosure(leftName, stateI) {
@@ -323,9 +409,12 @@ export default {
         delete this.closureC["State" + this.stateCnt];
         --this.stateCnt; //别忘了再减去一
         this.goIXTable[stateI][X] = existStateI; //指向已经存在的StateI
+        this.ixList.push([stateI, X, existStateI]);
       } else {
         this.goIXTable[stateI][X] = "State" + this.stateCnt; //指向最新的状态I
+        this.ixList.push([stateI, X, "State" + this.stateCnt]);
       }
+
       this.visitedState.push(stateI); //代表这个状态我已经做完了闭包和状态转换
     },
     //要用LR(0),则任意一项目集(一个状态)不能同时有移进-规约,也不能同时有规约-规约项目的存在,所以设个flagID判断一下
@@ -383,6 +472,7 @@ export default {
         }
         len2 = this.stateCnt;
       } while (len1 < len2); // || this.visitedState.length < this.stateCnt + 1
+      console.log("总共" + this.stateCnt + "个状态(项目集)");
       console.log(this.goIXTable);
       console.log(this.closureC);
       for (let i = 0; i <= this.stateCnt; i++) {

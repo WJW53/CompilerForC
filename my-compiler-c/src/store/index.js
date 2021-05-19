@@ -17,8 +17,8 @@ export default new Vuex.Store({
       purifyTextData:"",//净化后的源代码
       idData: {},//id表
       tokenToGram:[],
-      firstData:[],
-      followData:[],
+      firstData:{},
+      followData:{},
       dfaData:[],
       nonTerminal: [], //非终结符
       terminal: [],//终结符,没必要写这个..
