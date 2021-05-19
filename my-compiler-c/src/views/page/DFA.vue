@@ -59,45 +59,81 @@ export default {
       console.log(this.allProject);
       console.log(count);
     },
+    //文法符号A能否经过有限次推导,推出空
+    //我写的文法若A能推出空,则它前面必有其他的产生式
+    //需要避免循环推导问题吗?可用缓存处理,不过我这没必要吧,因为我文法不会造成这种状况
+    isACanToEmpty(A) {
+      let obj = this.productMap;
+      let flag1 = false,
+        flag2 = false,
+        canToε = flag1 || flag2;
+      while (obj[A] !== undefined && canToε === false) {
+        for (let a1 of obj[A]) {
+          if (canToε === false) {
+            if (a1.length === 1 && a1[0] === "ε") {
+              flag1 = true;
+            } else if (this.nonTerminal.includes(a1[0])) {
+              //更新beita,递归找
+              flag2 = this.isACanToEmpty(a1[0]);
+            }
+          } else {
+            break;
+          }
+          canToε = flag1 || flag2;
+        }
+      }
+      return canToε;
+    },
     getFirst() {},
     getFollow(A) {
       //非终结符A,??这到底需不需要考虑undefined,也就是第一次的情况呢???
       if (A === "StartProgram") {
         //1.如果A是开始符号的话
         this.followData[A] = ["#"];
-      } else {
-        this.followData[A] = [];
+        return;
       }
+      this.followData[A] === undefined && (this.followData[A] = []);
+
       let obj = this.productMap;
       //2.形如A->αBβ,β只要非空其他均可,α可以为空;将First(β)\{ε}即First(β)除去ε,加入Follow(B)中
 
       for (let key in obj) {
         for (let arr of obj[key]) {
           let idx = arr.indexOf(A);
-          if (idx > -1 && idx !== arr.length - 1) {
-            //这里加一个判断β经有限次推导能否推出ε
-            let beita = arr[idx + 1],
-              canToε = false;
-            while (obj[beita] !== undefined && canToε === false) {
-              for (let a1 of obj[beita]) {
-                if (a1.length === 1 && a1[0] === "ε") {
-                  canToε = true;
-                  break;
+          //若A后紧跟终结符且不是空
+          if (idx > -1) {
+            if (idx !== arr.length - 1) {
+              //A不是最后一位
+              if (
+                !this.nonTerminal.includes(arr[idx + 1]) &&
+                arr[idx + 1] !== "ε"
+              ) {
+                this.followData[A].push(arr[idx + 1]);
+                return;
+              }
+              //3.形如A->αB(α可以是终结符或者非终结符或者直接为空)或者A->αBβ是一个产生式且β=*>ε
+              //将Follow(A)加入到Follow(B)中
+              if (this.nonTerminal.includes(arr[idx + 1])) {
+                //是非终结符的话,首先直接加入它的First集且非空元素
+                let temp = this.firstData[arr[idx + 1]].filter(
+                  (item) => item !== "ε"
+                );
+                this.followData[A].push(...temp);
+                //再看β能否经有限次推导推出空,β是个符号串,即从idx+1开始的,arr里的元素
+                for (let j = idx + 1; j < arr.length; j++) {
+                  let canToε = this.isACanToEmpty(arr[j]);
+                  if (canToε === false) {
+                    //β中的某一位符号,不能推出空了,直接退出
+                    break;
+                  }
+                  if (j === arr.length - 1 && canToε === true) {
+                    this.followData[A].push(...this.followData[key]);
+                  }
                 }
               }
-            }
-            //3.形如A->αB(α可以是终结符或者非终结符或者直接为空)或者A->αBβ是一个产生式且β=*>ε
-            //将Follow(A)加入到Follow(B)中
-            if (canToε === false) {
-              let temp = this.firstData[arr[idx + 1]].filter(
-                (item) => item !== "ε"
-              );
-              this.followData[A].push(...temp);
             } else {
               this.followData[A].push(...this.followData[key]);
             }
-          } else if (idx === arr.length - 1) {
-            this.followData[A].push(...this.followData[key]);
           }
         }
       }
