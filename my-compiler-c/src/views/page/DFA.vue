@@ -7,19 +7,20 @@ export default {
   components: {},
   data() {
     return {
-      firstProduction: {},
       firstData: this.$store.state.compilation.firstData,
       followData: this.$store.state.compilation.followData,
       nonTerminal: this.$store.state.compilation.nonTerminal, //非终结符
       terminal: this.$store.state.compilation.terminal,
       productRight: this.$store.state.compilation.productRight, //二维数组
       productMap: this.$store.state.compilation.productMap, //对象是按ascll排序的
-      allProject: {},
+      firstProduction: {}, //所有产生式的first集
+      conflictMap: { length: 0 }, //识别活前缀的DFA中的所有冲突的状态集合
+      allProject: {}, //扩展文法后的所有项目
       closureC: {}, //项目集规范族(就是所有项目集的集合 / 所有状态的集合)
       stateCnt: -1, //状态的个数,从零开始
       flagLR0: true, //有一个状态冲突就为false
       goIXTable: {}, //{State0:{A:State1,b:State2},State1:{C:State3}}
-      ixList: [],
+      ixList: [], //状态I面临文法符号X时的下一个状态
       followGramSymbols: {}, //存储每个状态I的后继文法符号
       visitedState: [], //存储做完了闭包和状态转换的状态
     };
@@ -31,17 +32,13 @@ export default {
     // console.log(this.nonTerminal);
     // console.log(this.productRight);
     // console.log(this.productMap);
-    this.getAllFirst();
-    console.log('以下是Follow集合:  ');
-    this.getFollow();
-    console.log(this.followData);
     this.constructDfaToIdentifyViablePrefix();
     let str = "以下是状态转换表: \n\n";
     for (let arr of this.ixList) {
       str = str + arr.join("  ") + "\n";
     }
-    // console.log(this.ixList);
     this.$store.state.compilation.previewData = str;
+    // console.log(this.ixList);
   },
   methods: {
     //得到所有项目
@@ -434,7 +431,9 @@ export default {
           }
         }
       }
-      this.$set(this.goIXTable, stateI, {});
+      if (this.goIXTable[stateI] === undefined) {
+        this.$set(this.goIXTable, stateI, {}); //只有第一次才初始化呀
+      }
       //添加弧线,stateI本身就是传进来的状态
       if (notBelong !== true) {
         delete this.closureC["State" + this.stateCnt];
@@ -470,13 +469,15 @@ export default {
       }
       // console.log(flag1,flag2);
       if ((flag1 > 0 && flag2 > 0) || flag2 > 1) {
-        console.log(stateI, this.closureC[stateI]);
+        // console.log(stateI, this.closureC[stateI]);
+        this.$set(this.conflictMap, stateI, this.closureC[stateI]);
+        this.conflictMap.length++;
         return false; //冲突
       } else {
         return true;
       }
     },
-    //今晚还要完善下文法以及将我的TOKEN改为type流
+    //今晚还要完善下文法以及将我的TOKEN改为type流(曾经某天的注释而已..)
     constructDfaToIdentifyViablePrefix() {
       this.updateGrammar();
       // this.closureC["State" + this.stateCnt] = { StartProgram: [["`", "Program"]] }; //设为该DFA的初态
@@ -504,12 +505,18 @@ export default {
         len2 = this.stateCnt;
       } while (len1 < len2); // || this.visitedState.length < this.stateCnt + 1
       console.log("总共" + this.stateCnt + "个状态(项目集)");
-      console.log(this.goIXTable);
-      console.log(this.closureC);
+      console.log("识别活前缀的DFA的状态转换表如下: \n", this.goIXTable);
+      console.log("LR(0)的项目集规范族如下: \n", this.closureC);
       for (let i = 0; i <= this.stateCnt; i++) {
         // console.log(this.canLR0("State" + i));
         this.canLR0("State" + i);
       } //裂开了,需要用LR1,文法里有4个状态都出现了同时出现移进-规约的冲突
+      console.log(
+        "共含有 " +
+          this.conflictMap.length +
+          " 个移进-规约或规约-规约的冲突状态如下: \n",
+        this.conflictMap
+      );
     },
   },
 };
