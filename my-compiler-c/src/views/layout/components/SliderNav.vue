@@ -72,7 +72,7 @@ export default {
     // }),
   },
   created() {
-    
+
   },
   methods: {
     changeFun() {

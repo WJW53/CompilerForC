@@ -32,10 +32,11 @@ export default {
     // console.log(this.nonTerminal);
     // console.log(this.productRight);
     // console.log(this.productMap);
+    this.getAllFirst();
     this.constructDfaToIdentifyViablePrefix();
     let str = "以下是状态转换表: \n\n";
     for (let arr of this.ixList) {
-      str = str + arr.join("  ") + "\n";
+      str = str + arr.join("\t") + "\n";
     }
     this.$store.state.compilation.previewData = str;
     // console.log(this.ixList);
@@ -78,24 +79,39 @@ export default {
       let flag1 = false,
         flag2 = false,
         canToε = flag1 || flag2;
-      while (obj[A] !== undefined && canToε === false) {
+      if (obj[A] !== undefined) {
+        //当A为非终结符时,遍历A的产生式
         for (let a1 of obj[A]) {
-          if (canToε === false) {
-            if (a1.length === 1 && a1[0] === "ε") {
-              flag1 = true;
-            } else if (this.nonTerminal.includes(a1[0])) {
-              //更新beita,递归找
-              // console.log(a1[0]);
-              flag2 = this.isACanToEmpty(a1[0]);
+          for (let i = 0, len = a1.length; i < len; i++) {
+            let flag = this.nonTerminal.includes(a1[i]);
+            if (flag === false && a1[i] !== "ε") {
+              //如果该序列存在非空的终结符,那这一条产生式肯定推不出空,则可跳出当前循环
+              flag1 = false;
+              break;
+            } else if (a1[i] === "ε") {
+              continue; //继续判断下一位
+            } else if (flag === true) {
+              flag1 = this.isACanToEmpty(a1[i]); //非终结符则直接递归
+              if (flag1 === false) {
+                break; //同样,代表这条产生式推不出空了,因为至少存在了一个非终结符推不出
+              } else {
+                continue; //true的话就继续往下找呗
+              }
             }
-          } else {
-            break;
           }
-          canToε = flag1 || flag2;
+          if (flag1 === true) {
+            return true; //说明A已经找到一条产生式能推出空了
+          } else {
+            continue; //找下一个产生式
+          }
         }
-        return canToε; //这是因为循环做完了
+        //找完了都还没返回true,则此处返回false
+        return false;
+      } else if (A === "ε") {
+        return true;
+      } else {
+        return false;
       }
-      return canToε;
     },
     //有个大问题!可能右部的首非终结符,它自己当前还没求first/follow!那得到的肯定是空数组啊
     //我选用的就是递归..
@@ -198,8 +214,9 @@ export default {
         this.followData[A] = ["#"];
         return;
       }
-      this.followData[A] === undefined && (this.followData[A] = []);
-
+      if (this.followData[A] === undefined) {
+        this.followData[A] = [];
+      }
       let obj = this.productMap;
       //2.形如A->αBβ,β只要非空其他均可,α可以为空;将First(β)\{ε}即First(β)除去ε,加入Follow(B)中
 
@@ -210,20 +227,15 @@ export default {
           if (idx > -1) {
             if (idx !== arr.length - 1) {
               //A不是最后一位且后面有一个终结符
-              if (
-                !this.nonTerminal.includes(arr[idx + 1]) &&
-                arr[idx + 1] !== "ε"
-              ) {
+              let flag = this.nonTerminal.includes(arr[idx + 1]);
+              if (flag === false && arr[idx + 1] !== "ε") {
                 this.followData[A].push(arr[idx + 1]);
-                return;
               }
               //3.形如A->αB(α可以是终结符或者非终结符或者直接为空)或者A->αBβ是一个产生式且β=*>ε
               //将Follow(A)加入到Follow(B)中
-              if (this.nonTerminal.includes(arr[idx + 1])) {
+              if (flag === true) {
                 //是非终结符的话,首先直接加入它的First集且非空元素
-                let temp = this.firstData[arr[idx + 1]].filter(
-                  (item) => item !== "ε"
-                );
+                let temp = this.getNoεOfArr(this.firstData[arr[idx + 1]]);
                 this.followData[A].push(...temp);
                 //再看β能否经有限次推导推出空,β是个符号串,即从idx+1开始的,arr里的元素
                 for (let j = idx + 1; j < arr.length; j++) {
@@ -233,18 +245,24 @@ export default {
                     break;
                   }
                   if (j === arr.length - 1 && canToε === true) {
-                    this.getFollow(key); //得先求出人家才行啊
+                    if (this.followData[key] === undefined) {
+                      this.getFollow(key); //得先求出人家才行啊
+                    }
                     this.followData[A].push(...this.followData[key]);
                   }
                 }
               }
             } else {
-              this.getFollow(key);
+              if (this.followData[key] === undefined) {
+                this.getFollow(key); //得先求出人家才行啊
+              }
               this.followData[A].push(...this.followData[key]);
             }
           }
         }
       }
+      this.followData[A] = this.getUniqueArr(this.followData[A]);
+      // console.log(this.followData[A]);
     },
     getUniqueArr(arr) {
       return Array.from(new Set(arr));
@@ -447,11 +465,40 @@ export default {
 
       this.visitedState.push(stateI); //代表这个状态我已经做完了闭包和状态转换
     },
+    isCanSLR1() {
+      let obj = this.conflictMap;
+      for (let stateI in obj) {
+        let arr = [];
+        for (let key in obj[stateI]) {
+          if (key !== "state" && key !== "reduceConflict") {
+            //冲突的规约项目的左部的Follow集
+            arr.push([...obj[stateI][key]]);
+          }
+          let flag = true;
+          let len = arr.length;
+          for (let i = 0; flag === true && i < len; i++) {
+            for (let j = i + 1; j < len; j++) {
+              let len1 = arr[i].length + arr[j].length;
+              let len2 = this.getUniqueArr([...arr[i], ...arr[j]]).length; //去重后长度变短了
+              if (len2 < len1) {
+                console.log(
+                  "虽用了SLR1分析法,但状态" + stateI + "仍然存在冲突!!"
+                );
+                flag = false;
+                break;
+              }
+            }
+          }
+        }
+      }
+    },
     //要用LR(0),则任意一项目集(一个状态)不能同时有移进-规约,也不能同时有规约-规约项目的存在,所以设个flagID判断一下
     //每次检查一个状态内是否有冲突,有一个返回false则代表有冲突,
     canLR0(stateI) {
       let flag1 = 0,
         flag2 = 0; //移进,规约,默认无冲突
+      let shiftArr = [],
+        reduceArr = [];
       for (let key in this.closureC[stateI]) {
         // console.log(key);
         let arr = this.closureC[stateI][key]; //二维数组
@@ -460,9 +507,18 @@ export default {
           if (idx === arr1.length - 1 && idx !== 0) {
             //认为A->`是不可达状态
             flag2++; //规约项目+1
+            if (this.followData[key] === undefined) {
+              this.getFollow(key);
+            }
+            let str = key + "->" + arr1.join(" ");
+            reduceArr.push([str, arr1.length - 1]); //-1是因为要去掉那个`
           } else {
-            if (!this.nonTerminal.includes(arr1[idx + 1])) {
+            if (
+              this.nonTerminal.includes(arr1[idx + 1]) === false &&
+              idx !== arr1.length - 1
+            ) {
               flag1++; //移进项目+1
+              shiftArr.push(arr1[idx + 1]);
             }
           }
         }
@@ -470,8 +526,15 @@ export default {
       // console.log(flag1,flag2);
       if ((flag1 > 0 && flag2 > 0) || flag2 > 1) {
         // console.log(stateI, this.closureC[stateI]);
-        this.$set(this.conflictMap, stateI, this.closureC[stateI]);
+        this.$set(this.conflictMap, stateI, { state: this.closureC[stateI] });
+        this.conflictMap[stateI]["shiftConflict"] = shiftArr;
+        this.conflictMap[stateI]["reduceConflict"] = reduceArr;
         this.conflictMap.length++;
+        for (let arr of this.conflictMap[stateI]["reduceConflict"]) {
+          let key = arr[0].split("->")[0];
+          this.conflictMap[stateI][key] = this.followData[key];
+          console.log(key + "的Follow集合", this.followData[key]);
+        }
         return false; //冲突
       } else {
         return true;
@@ -517,6 +580,7 @@ export default {
           " 个移进-规约或规约-规约的冲突状态如下: \n",
         this.conflictMap
       );
+      this.isCanSLR1(); //SLR1能否解决所有冲突
     },
   },
 };

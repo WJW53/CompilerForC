@@ -78,8 +78,9 @@ export default {
   mounted() {},
   methods: {
     startGetToken() {
-      this.filterResource(this.$store.state.compilation.previewData);
-      this.$store.state.compilation.previewData = this.newTextData;
+      this.filterResource(this.$store.state.compilation.textData);
+      this.$store.state.compilation.newTextData = this.newTextData;
+      this.$store.state.compilation.previewData = this.$store.state.compilation.newTextData;
       let len = this.newTextData.length;
       while (this.syn !== 0 && this.idx < len) {
         //种别码为0就是出错了
