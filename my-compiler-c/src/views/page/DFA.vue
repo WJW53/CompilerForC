@@ -7,6 +7,7 @@ export default {
   components: {},
   data() {
     return {
+      firstProduction: {},
       firstData: this.$store.state.compilation.firstData,
       followData: this.$store.state.compilation.followData,
       nonTerminal: this.$store.state.compilation.nonTerminal, //非终结符
@@ -30,7 +31,10 @@ export default {
     // console.log(this.nonTerminal);
     // console.log(this.productRight);
     // console.log(this.productMap);
-    this.getFirst();
+    this.getAllFirst();
+    console.log('以下是Follow集合:  ');
+    this.getFollow();
+    console.log(this.followData);
     this.constructDfaToIdentifyViablePrefix();
     let str = "以下是状态转换表: \n\n";
     for (let arr of this.ixList) {
@@ -65,7 +69,7 @@ export default {
           }
         }
       }
-      console.log(this.allProject);
+      // console.log(this.allProject);
       console.log("扩广文法总共" + count + "个项目");
     },
     //文法符号A能否经过有限次推导,推出空
@@ -77,7 +81,7 @@ export default {
       let flag1 = false,
         flag2 = false,
         canToε = flag1 || flag2;
-      while (obj[A]!==undefined && canToε === false) {
+      while (obj[A] !== undefined && canToε === false) {
         for (let a1 of obj[A]) {
           if (canToε === false) {
             if (a1.length === 1 && a1[0] === "ε") {
@@ -97,75 +101,100 @@ export default {
       return canToε;
     },
     //有个大问题!可能右部的首非终结符,它自己当前还没求first/follow!那得到的肯定是空数组啊
-    getFirst() {
-      let obj = this.productMap;
-      // console.log(obj);
-      for (let key in obj) {
-        //我这样只是加了非终结符啊,终结符呢
-        this.$set(this.firstData, key, {});
-        // this.$set(this.firstData[key], "all", []);
-        this.firstData[key].all = [];
+    //我选用的就是递归..
+    getAllFirst() {
+      // this.getFirst("StartProgram");
+      let n = 0;
+      //false,因为我的IDentifier,FuncIDentifier,STRING为终结符
+      // console.log(this.nonTerminal.includes("IDentifier"));
+      let obj = this.firstProduction;
+      for (let key of this.nonTerminal) {
+        // if (obj[key] === undefined)//不能加这个判断否则求不全
+        this.getFirst(key); //没事,我做了去重的,所以即便有重复也没关系
       }
-      // this.firstData.ArithmeticExpr.all.push(2);
-      console.log("First集为: ",this.firstData); //没问题,可以响应式
       for (let key in obj) {
-        let arr2d = obj[key];
-        for (let arr of arr2d) {
-          let str = arr.join(" ");
-          if (this.firstData[key][str] === undefined) {
-            this.firstData[key][str] = [];
-          }
-          if (this.nonTerminal.includes(arr[0]) === false) {
-            this.firstData[key][str].push(arr[0]);
-            this.$set(this.firstData, arr[0], {}); //顺便在非终结符时直接求First(A)
-            this.firstData[arr[0]].all = [arr[0]];
-            // console.log("1", this.firstData[key]);
-          } else {
-            //非终结符时
-            //形如A->Xα,X属于非终结符,这个all就是存放着First(A),即A的候选式的去重总和,是Array
-            let temp = this.getNoεOfArr(this.firstData[arr[0]].all); //因为这会还没求出arr[0]的first
-            this.firstData[key][str].push(...temp);
-            // console.log(temp);
-            // console.log(arr);
-            //以下是P99 3.1 步骤(4)
-            for (let i = 0, len = arr.length; i < len; i++) {
-              //在我的产生式二维数组里,不会单独出现一条形如A:[["ε"]]的,它起码还有别的产生式
-              let flag = this.isACanToEmpty(arr[i]);
-              if (i > 0 && flag === false && i < len - 1) {
-                //到这里不能推出空了
-                // console.log(arr[i] + "不能经过有限次推导推出空");
-                if (this.nonTerminal.includes(arr[i]) === false) {
-                  //终结符的时候,且是第一次
-                  if (this.firstData[arr[i]] === undefined) {
-                    this.$set(this.firstData, arr[i], {});
-                    this.firstData[arr[i]].all = [arr[i]];
-                  }
-                }
-                // console.log(this.firstData[arr[i]]);
-                let temp1 = this.getNoεOfArr(this.firstData[arr[i]].all);
-                // console.log(temp1);
-                this.firstData[key][str].push(...temp1);
-              } else if (flag === true && i === len - 1) {
-                // console.log(arr + "可以经过有限次推导推出空");
-                this.firstData[key][str].push("ε");
-              }
-            }
-            // console.log("3", this.firstData[key]);
-          }
-        }
-
-        for (let k in this.firstData[key]) {
-          if (k !== "all") {
-            this.firstData[key].all.push(...this.firstData[key][k]);
-          }
-        }
-        // console.log(this.firstData[key]);
+        ++n;
+        this.firstData[key] = obj[key].all;
       }
+      console.log(
+        "First集合里共 " + n + " 个符号(非终结/终结/空),以下是First集合: "
+      );
       console.log(this.firstData);
     },
-    getAllFirst() {},
+    getFirst(A) {
+      let obj = this.productMap;
+      if (this.firstProduction[A] === undefined) {
+        //A本身就是非终结符,所以下面针对终结符有另外的处理
+        this.$set(this.firstProduction, A, {}); //第一次的时候
+        this.firstProduction[A].all = [];
+      }
+      // console.log("First集为: ", this.firstProduction); //没问题,可以响应式
+      for (let arr of obj[A]) {
+        let str = arr.join(" ");
+        if (this.firstProduction[A][str] === undefined) {
+          this.firstProduction[A][str] = [];
+        }
+        if (this.nonTerminal.includes(arr[0]) === false) {
+          this.firstProduction[A][str].push(arr[0]);
+          this.$set(this.firstProduction, arr[0], {}); //顺便在非终结符时直接求First(A)
+          this.firstProduction[arr[0]].all = [arr[0]];
+          // console.log("1", this.firstProduction[A]);
+        } else {
+          //非终结符时
+          //形如A->Xα,X属于非终结符,这个all就是存放着First(A),即A的候选式的去重总和,是Array
+          if (this.firstProduction[arr[0]] === undefined) {
+            // console.log("1", arr[0]);
+            this.getFirst(arr[0]); //先求出它的First集,也就是当它的属性all数组长度不在增大时
+            // console.log("1结束");
+          }
+          let temp = this.getNoεOfArr(this.firstProduction[arr[0]].all); //因为这会还没求出arr[0]的first
+          this.firstProduction[A][str].push(...temp);
+          // console.log(temp);
+          // console.log(arr);
+          //以下是P99 3.1 步骤(4)
+          for (let i = 0, len = arr.length; i < len; i++) {
+            //在我的产生式二维数组里,不会单独出现一条形如A:[["ε"]]的,它起码还有别的产生式
+            let flag = this.isACanToEmpty(arr[i]);
+            if (i > 0 && flag === false && i < len - 1) {
+              //到这里不能推出空了
+              // console.log(arr[i] + "不能经过有限次推导推出空");
+              if (this.nonTerminal.includes(arr[i]) === false) {
+                //终结符的时候,且是第一次
+                if (this.firstProduction[arr[i]] === undefined) {
+                  this.$set(this.firstProduction, arr[i], {});
+                  this.firstProduction[arr[i]].all = [arr[i]];
+                }
+              }
+              // console.log(this.firstProduction[arr[i]]);
+              if (this.firstProduction[arr[i]] === undefined) {
+                // console.log("2", arr[i]);
+                this.getFirst(arr[i]); //同理先求它的first
+                // console.log("2结束");
+              }
+              let temp1 = this.getNoεOfArr(this.firstProduction[arr[i]].all);
+              this.firstProduction[A][str].push(...temp1);
+              // console.log(temp1);
+            } else if (flag === true && i === len - 1) {
+              // console.log(arr + "可以经过有限次推导推出空");
+              this.firstProduction[A][str].push("ε");
+            }
+          }
+          // console.log("3", this.firstProduction[A]);
+        }
+      }
+
+      for (let k in this.firstProduction[A]) {
+        if (k !== "all") {
+          //再把所有产生式结合起来
+          this.firstProduction[A].all.push(...this.firstProduction[A][k]);
+        }
+      }
+      this.firstProduction[A].all = this.getUniqueArr(
+        this.firstProduction[A].all
+      );
+    },
     getAllFollow() {},
-    getFollow(A) {
+    getFollow(A = "StartProgram") {
       //非终结符A,??这到底需不需要考虑undefined,也就是第一次的情况呢???
       if (A === "StartProgram") {
         //1.如果A是开始符号的话
@@ -207,11 +236,13 @@ export default {
                     break;
                   }
                   if (j === arr.length - 1 && canToε === true) {
+                    this.getFollow(key); //得先求出人家才行啊
                     this.followData[A].push(...this.followData[key]);
                   }
                 }
               }
             } else {
+              this.getFollow(key);
               this.followData[A].push(...this.followData[key]);
             }
           }
@@ -451,7 +482,7 @@ export default {
       // this.closureC["State" + this.stateCnt] = { StartProgram: [["`", "Program"]] }; //设为该DFA的初态
       let project = this.allProject.StartProgram.slice(0, 1);
       //project为右部即二维数组,name是它的左部即key
-      console.log(project);
+      // console.log(project);
       this.getClosure({ StartProgram: project });
       //对this.closureC中的每个项目集即状态I及其对应的每个文法符号X,求GO(I,X);重复执行这一大条,直至C中不再增加状态
       let len1 = null,

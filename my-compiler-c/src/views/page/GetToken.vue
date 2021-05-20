@@ -101,7 +101,7 @@ export default {
       // console.log(this.purifyTextData);
       this.timer = null;
       for (let i = 0; i < this.token.length; i++) {
-        this.changeTypeForGram(this.token[i]);
+        this.changeTypeForGram(this.token[i], this.token[i + 1]);
       }
       // this.$store.state.compilation.tokenToGram = this.tokenToGram;
       console.log(this.tokenToGram);
@@ -527,10 +527,12 @@ export default {
         });
       }
     },
-    changeTypeForGram(token) {
+    changeTypeForGram(token, nextToken) {
       let type = token.type;
-      if (type === "integer" || type === "float") {
-        this.tokenToGram.push("Number");
+      if (type === "integer") {
+        this.tokenToGram.push("IntergerPart");
+      } else if (type === "float") {
+        this.tokenToGram.push("FloatNumber");
       } else if (
         type === "operator" ||
         type === "boundary" ||
@@ -543,8 +545,13 @@ export default {
       } else if (type === "character") {
         this.tokenToGram.push("Character");
       } else if (type === "id") {
-        this.tokenToGram.push("IDentifier");
+        if (nextToken !== undefined && nextToken.TokenName === "(") {
+          this.tokenToGram.push("FuncIDentifier");
+        } else {
+          this.tokenToGram.push("IDentifier");
+        }
       }
+      // token.type = this.tokenToGram[this.tokenToGram.length - 1];
     },
     whatType() {
       if (this.syn >= 1000) {
