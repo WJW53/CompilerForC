@@ -7,6 +7,9 @@
 
 //开写:
 //程序初始相关的
+
+////注意!!这是最初写的文法产生式,后面修改了很多,只有production.js中才是我最后应用的内容
+
 StartProgram::=Program
 Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
 HeadFiles::=# include HeadFile

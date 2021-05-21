@@ -34,7 +34,7 @@ export default {
     // console.log(this.productMap);
     this.getAllFirst();
     this.constructDfaToIdentifyViablePrefix();
-    let str = "以下是状态转换表: \n\n";
+    let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
     for (let arr of this.ixList) {
       str = str + arr.join("\t") + "\n";
     }
@@ -468,27 +468,33 @@ export default {
     isCanSLR1() {
       let obj = this.conflictMap;
       for (let stateI in obj) {
+        if (stateI === "length") {
+          continue;
+        }
         let arr = [];
+        let flag = true;
         for (let key in obj[stateI]) {
-          if (key !== "state" && key !== "reduceConflict") {
+          if (key !== "state" && key !== "reduceConflict" && key !== "length") {
             //冲突的规约项目的左部的Follow集
             arr.push([...obj[stateI][key]]);
           }
-          let flag = true;
-          let len = arr.length;
-          for (let i = 0; flag === true && i < len; i++) {
-            for (let j = i + 1; j < len; j++) {
-              let len1 = arr[i].length + arr[j].length;
-              let len2 = this.getUniqueArr([...arr[i], ...arr[j]]).length; //去重后长度变短了
-              if (len2 < len1) {
-                console.log(
-                  "虽用了SLR1分析法,但状态" + stateI + "仍然存在冲突!!"
-                );
-                flag = false;
-                break;
-              }
+        }
+        let len = arr.length;
+        for (let i = 0; flag === true && i < len; i++) {
+          for (let j = i + 1; j < len; j++) {
+            let len1 = arr[i].length + arr[j].length;
+            let len2 = this.getUniqueArr([...arr[i], ...arr[j]]).length; //去重后长度变短了
+            if (len2 < len1) {
+              console.log(
+                "虽用了SLR1分析法,但状态" + stateI + "仍然存在冲突!!"
+              );
+              flag = false;
+              break;
             }
           }
+        }
+        if (flag) {
+          console.log("用了SLR1分析法,已经解决状态 " + stateI + " 的冲突");
         }
       }
     },

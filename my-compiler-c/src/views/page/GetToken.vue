@@ -104,8 +104,7 @@ export default {
       for (let i = 0; i < this.token.length; i++) {
         this.changeTypeForGram(this.token[i], this.token[i + 1]);
       }
-      // this.$store.state.compilation.tokenToGram = this.tokenToGram;
-      console.log(this.tokenToGram);
+      this.$store.state.compilation.tokenToGram = this.tokenToGram;
     },
     searchReserve(reserveWord, s) {
       //查找保留字,成功查找则返回对应种别码,否则返回700种别码,即为标识符

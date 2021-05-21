@@ -93,14 +93,14 @@ const routes = [
     },
     children: [
       {
-        path: 'GetDFA',
-        name: 'GetDFA',
+        path: 'DFA_SLR1',
+        name: 'DFA_SLR1',
         meta: {
-          title: '识别活前缀的DFA',
+          title: 'DFA_LR0_SLR1',
           icon: 'edit',
           hidden: false,
         },
-        component: () => import("../views/page/DFA.vue"),
+        component: () => import("../views/page/DFA_SLR1.vue"),
       },
       // {
       //   path: 'LL1',
@@ -122,16 +122,16 @@ const routes = [
       //   },
       //   component: () => import("../views/page/RecursiveDescent.vue"),
       // },
-      {
-        path: 'LR',
-        name: "LR",
-        meta: {
-          title: 'LR',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/LR.vue"),
-      },
+      // {
+      //   path: 'LR1',
+      //   name: "LR1",
+      //   meta: {
+      //     title: 'LR1分析法',
+      //     icon: 'edit',
+      //     hidden: false,
+      //   },
+      //   component: () => import("../views/page/LR1.vue"),
+      // },
     ],
   },
   {

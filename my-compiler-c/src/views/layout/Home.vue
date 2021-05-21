@@ -26,7 +26,7 @@ export default {
       terminal: this.$store.state.compilation.terminal,
       productRight: this.$store.state.compilation.productRight, //三维数组
       // productMap: new Map(),//map记录了顺序
-      productMap: this.$store.state.compilation.productMap,//对象是按ascll排序的
+      productMap: this.$store.state.compilation.productMap, //对象是按ascll排序的
     };
   },
   created() {
@@ -34,20 +34,26 @@ export default {
     let arr = this.myProduction.split("\n");
     let temp = null,
       len = arr.length;
+    let terminalArr = [];
     for (let i = 0; i < len; i++) {
       temp = arr[i].split("::=");
-
       this.nonTerminal[i] = temp[0];
-      this.productRight[i] = temp[1].split("@");
+      let arr1 = (this.productRight[i] = temp[1].split("@"));
+      for (let k = 0, len1 = arr1.length; k < len1; k++) {
+        let t = arr1[k].split(" ");
+        terminalArr.push(...t);
+      }
       for (let j = 0, len2 = this.productRight[i].length; j < len2; j++) {
         this.productRight[i][j] = this.productRight[i][j].split(" ");
       }
       // this.productMap.set(temp[0], this.productRight[i]);
       this.productMap[temp[0]] = this.productRight[i];
     }
-    console.log(this.nonTerminal);
-    // console.log(this.productRight);
-    console.log(this.productMap);
+    terminalArr = Array.from(new Set(terminalArr));
+    terminalArr = terminalArr.filter(
+      (item) => !this.nonTerminal.includes(item)
+    ); //空,算终结符
+    this.terminal.push(...terminalArr);
   },
   methods: {},
   // watch: {
