@@ -547,6 +547,8 @@ export default {
       } else if (type === "id") {
         if (nextToken !== undefined && nextToken.TokenName === "(") {
           this.tokenToGram.push("FuncIDentifier");
+        } else if (nextToken !== undefined && nextToken.TokenName === "[") {
+          this.tokenToGram.push("ArrayIDentifier");
         } else {
           this.tokenToGram.push("IDentifier");
         }
