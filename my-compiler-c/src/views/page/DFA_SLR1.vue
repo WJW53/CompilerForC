@@ -7,6 +7,8 @@ export default {
   components: {},
   data() {
     return {
+      actionTable: {},
+      gotoTable: {},
       allSymbols: this.$store.state.compilation.allSymbols,
       tokenToGram: this.$store.state.compilation.tokenToGram,
       firstData: this.$store.state.compilation.firstData,
@@ -22,7 +24,7 @@ export default {
       stateCnt: -1, //状态的个数,从零开始
       flagLR0: true, //有一个状态冲突就为false
       goIXTable: {}, //{State0:{A:State1,b:State2},State1:{C:State3}}
-      ixList: [], //状态I面临文法符号X时的下一个状态
+      ixList: [], //状态I面临文法符号X时的下一个状态,三元式的写法
       followGramSymbols: {}, //存储每个状态I的后继文法符号
       visitedState: [], //存储做完了闭包和状态转换的状态
     };
@@ -32,7 +34,7 @@ export default {
   //所以我在LR0基础上增加了SLR1
   created() {
     this.initPrint();
-    this.getAllFirst();
+    this.getAllFirst(); //得到所有First集
     this.checkFirstSymbols();
     this.constructDfaToIdentifyViablePrefix();
     let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
@@ -41,8 +43,59 @@ export default {
     }
     this.$store.state.compilation.previewData = str;
     // console.log(this.ixList);
+    this.getSLR1AnalsisTable();
+    console.log(this.actionTable);
+    console.log(this.gotoTable);
   },
   methods: {
+    getSLR1AnalsisTable() {
+      let C = this.closureC; //准备遍历所有状态和边
+      let obj = this.goIXTable; //状态转换表
+      //没能在action表和goto表中出现的都是出错标志,goto表无标志的面积较大,不用怀疑
+      for (let stateI in C) {
+        if (this.actionTable[stateI] === undefined) {
+          this.$set(this.actionTable, stateI, {});
+        }
+        if (this.gotoTable[stateI] === undefined) {
+          this.$set(this.gotoTable, stateI, {});
+        }
+
+        const STATE = this.closureC[stateI];
+        for (let key in STATE) {
+          let arr2d = STATE[key];
+          for (let arr of arr2d) {
+            let idx = arr.indexOf("`");
+            if (idx !== arr.length - 1) {
+              let X = arr[idx + 1];
+              let stateJ = obj[stateI][X]; //goIXTable
+              //若项目A->α`Xβ且GO(Ik,X)=Ij
+              if (stateJ !== undefined) {
+                if (this.terminal.includes(X)) {
+                  //若X为终结符
+                  this.actionTable[stateI][X] = obj[stateI][X]; //obj是goIXTable
+                } else {
+                  this.gotoTable[stateI][X] = obj[stateI][X]; //这就是后继状态j
+                }
+              }
+            } else {
+              if (idx !== 0) {
+                //A->α`,没有A->`是因为这是不可达状态. key就是A
+                let name = arr[idx - 1];
+                if (name === "Program" && key === "StartProgram") {
+                  this.actionTable[stateI]["$"] = "accept"; //接受状态
+                  console.log(stateI);
+                } else {
+                  let str = key + "->" + arr.join(" ");
+                  for (let ele of this.followData[key]) {
+                    this.actionTable[stateI][ele] = [str, arr.length]; //即用A->α规约
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     initPrint() {
       console.log(
         "共有 " +
@@ -250,7 +303,7 @@ export default {
       if (A === "StartProgram") {
         //1.如果A是开始符号的话
         if (this.followData[A] === undefined) {
-          this.followData[A] = ["#"];
+          this.followData[A] = ["$"];
         }
       }
       if (this.followData[A] === undefined) {
