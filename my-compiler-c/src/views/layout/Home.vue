@@ -27,6 +27,7 @@ export default {
       productRight: this.$store.state.compilation.productRight, //三维数组
       // productMap: new Map(),//map记录了顺序
       productMap: this.$store.state.compilation.productMap, //对象是按ascll排序的
+      allSymbols: this.$store.state.compilation.allSymbols,
     };
   },
   created() {
@@ -54,6 +55,7 @@ export default {
       (item) => !this.nonTerminal.includes(item)
     ); //空,算终结符
     this.terminal.push(...terminalArr);
+    this.allSymbols.push(...this.terminal, ...this.nonTerminal);
   },
   methods: {},
   // watch: {

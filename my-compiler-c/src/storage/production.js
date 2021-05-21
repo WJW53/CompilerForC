@@ -11,7 +11,6 @@ IDType::=boolean@char@int@float@double
 ConstDeclarationList::=IDentifier = CONST ConstDeclarationList1
 ConstDeclarationList1::=ConstDeclarationList@ε
 VariableDeclaration::=IDType VariableDeclarationList
-IDType::=boolean@char@int@float@double
 VariableDeclarationList::=SingleVariableDeclaration VariableDeclarationList1
 SingleVariableDeclaration::=VARIABLE@SingleVariableDeclaration1
 SingleVariableDeclaration1::== Expression@ε
@@ -50,11 +49,11 @@ ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce
 CompoundStce::={ SentenceList }
 SentenceList::=Sentence SentenceList1
 SentenceList1::=SentenceList@ε
-IFStce::=if ( Express ) Sentence IFStce1
+IFStce::=if ( Expression ) Sentence IFStce1
 IFStce1::=else Sentence@ε
-FORStce::=for ( Express ; Express ; Express ) LoopStce
+FORStce::=for ( Expression ; Expression ; Expression ) LoopStce
 WHILEStce::=while ( Expression ) LoopStce
-DOWHILEStce::=do LoopCompoundStce while ( Express )
+DOWHILEStce::=do LoopCompoundStce while ( Expression )
 LoopStce::=ValueDeclaration@LoopExecuteStce@LoopCompoundStce@ε
 LoopCompoundStce::={ LoopStceList }
 LoopStceList::=LoopStce LoopStceList1

@@ -23,6 +23,7 @@ export default new Vuex.Store({
       dfaData:[],
       nonTerminal: [], //非终结符
       terminal: [],//终结符,没必要写这个..
+      allSymbols:[],
       productRight: [], //二维数组
       productMap: {},//{}是按ascll排序的,可以用new Map(),它是有序的但是遍历需要迭代器
     },
