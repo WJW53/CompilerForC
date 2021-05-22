@@ -26,6 +26,7 @@ export default new Vuex.Store({
       allSymbols:[],
       productRight: [], //二维数组
       productMap: {},//{}是按ascll排序的,可以用new Map(),它是有序的但是遍历需要迭代器
+      LRTable:[],
     },
     changeCode: false,
   },

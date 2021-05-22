@@ -1,14 +1,58 @@
 <template>
-  <div class="DFA">DFA</div>
+  <div class="grammar-analysis">
+    grammar-analysis
+    <a-table
+      :columns="columnHead"
+      :data-source="LRTable"
+      :scroll="{ x: 900, y: 1100 }"
+      class="table"
+    >
+    </a-table>
+  </div>
 </template>
 
 <script>
+const columnHead = [
+  {
+    title: "OrderNumber",
+    width: 150,
+    dataIndex: "OrderNumber",
+    key: "OrderNumber",
+  },
+  {
+    title: "StateStack",
+    width: 150,
+    dataIndex: "StateStack",
+    key: "StateStack",
+  },
+  {
+    title: "SymbolsStack",
+    dataIndex: "SymbolsStack",
+    key: "SymbolsStack",
+    width: 150,
+  },
+  {
+    title: "Production",
+    dataIndex: "Production",
+    key: "Production",
+    width: 150,
+  },
+  {
+    title: "InputString",
+    dataIndex: "InputString",
+    key: "InputString",
+    width: 150,
+  },
+  { title: "Instruction", dataIndex: "Instruction", key: "Instruction" },
+];
 export default {
   components: {},
   data() {
     return {
+      columnHead,
       actionTable: {},
       gotoTable: {},
+      LRTable: [], //[{里面有6+1个属性,对应表的列头名}]
       allSymbols: this.$store.state.compilation.allSymbols,
       tokenToGram: this.$store.state.compilation.tokenToGram,
       firstData: this.$store.state.compilation.firstData,
@@ -33,21 +77,109 @@ export default {
   //但是后来我发现我就四五个状态有移进-规约冲突,且都往前探查一步即可区分,于是针对冲突的状态做处理即可
   //所以我在LR0基础上增加了SLR1
   created() {
-    this.initPrint();
-    this.getAllFirst(); //得到所有First集
-    this.checkFirstSymbols();
-    this.constructDfaToIdentifyViablePrefix();
-    let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
-    for (let arr of this.ixList) {
-      str = str + arr.join("\t") + "\n";
-    }
-    this.$store.state.compilation.previewData = str;
-    // console.log(this.ixList);
-    this.getSLR1AnalsisTable();
-    console.log(this.actionTable);
-    console.log(this.gotoTable);
+    this.startGrammarAnalysis();
   },
   methods: {
+    //语法分析开关
+    startGrammarAnalysis() {
+      this.initPrint();
+      this.getAllFirst(); //得到所有First集
+      this.checkFirstSymbols();
+      this.constructDfaToIdentifyViablePrefix();
+      let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
+      for (let arr of this.ixList) {
+        str = str + arr.join("\t") + "\n";
+      }
+      this.$store.state.compilation.previewData = str;
+      // console.log(this.ixList);
+      this.getSLR1AnalsisTable();
+      console.log(this.actionTable);
+      console.log(this.gotoTable);
+      this.startExecutiveProgram();
+    },
+    //LR分析的总控程序
+    startExecutiveProgram() {
+      let inputArr = this.tokenToGram.slice(0);
+      inputArr.push("$"); //注意push方法返回的是数组长度!!
+      //每六个变量组合成的一个对象就是LRTable的一条数据.  先初始化一些数据
+      let OrderNumber = 0,
+        StateStack = ["State0"],
+        SymbolsStack = ["$"],
+        Production = "",
+        InputString = inputArr,
+        Instruction = "State0和$分别入栈;";
+      //但是状态栈和符号栈最后是字符串格式,要记得到时候.join(" ");
+      this.LRTable.push({
+        key: OrderNumber,
+        OrderNumber,
+        StateStack,
+        SymbolsStack,
+        Production,
+        InputString: InputString.join(" "),
+        Instruction,
+      }); //先将初始状态入栈
+      let a = InputString.shift(); //首位,注意InputString本身是数组形式
+      let stateTop = StateStack[StateStack.length - 1],
+        flag = this.actionTable[stateTop][a];
+      //accept是分析成功,undefined是源程序中有错误,需要调用对应的错误处理程序
+      // console.log(this.actionTable);
+      // console.log(flag);
+      while (flag !== "accept") {
+        Production = "";
+        Instruction = ""; //每次先将产生式和说明重新初始化
+        if (flag !== undefined) {
+          if (typeof flag === "string") {
+            //即flag类似为StateI,是个字符串,准备移进
+            Instruction = flag + "和" + a + "分别入栈;";
+            SymbolsStack.push(a);
+            a = InputString.shift();
+            StateStack.push(flag);
+          } else {
+            //flag为数组,[产生式,产生式右部的长度]
+            let len = flag[1],
+              production = flag[0];
+            Production = production.slice(0, production.length - 1);
+            console.log(Production, len);
+            while (len--) {
+              let si = StateStack.pop();
+              let ai = SymbolsStack.pop();
+              Instruction = Instruction + si + "和" + ai + "分别退栈;";
+            }
+            let A = production.split("->")[0],
+              topPointer = StateStack.length - 1; //准备规约
+            SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
+            let nextState = this.gotoTable[StateStack[topPointer]][A];
+            StateStack.push(nextState); //注意规约动作并不改变当前输入符号
+            Instruction = Instruction + nextState + "和" + A + "分别入栈;";
+          }
+          ++OrderNumber;
+          let stateString = StateStack.join(","),
+            symbolsString = SymbolsStack.join(" "),
+            inputString = InputString.join(" ");
+          //然后push这个七元式,再更新数据
+          this.LRTable.push({
+            key: OrderNumber,
+            OrderNumber,
+            StateStack: stateString,
+            SymbolsStack: symbolsString,
+            Production,
+            InputString: inputString,
+            Instruction,
+          });
+          stateTop = StateStack[StateStack.length - 1];
+          console.log(stateTop, this.actionTable[stateTop]);
+          flag = this.actionTable[stateTop][a];
+        } else {
+          //找不到就报错
+          console.log("Error");
+          break;
+        }
+      }
+      if (flag !== undefined) {
+        console.log("分析成功了");
+      }
+    },
+    //构造SLR1分析表
     getSLR1AnalsisTable() {
       let C = this.closureC; //准备遍历所有状态和边
       let obj = this.goIXTable; //状态转换表
@@ -87,7 +219,8 @@ export default {
                 } else {
                   let str = key + "->" + arr.join(" ");
                   for (let ele of this.followData[key]) {
-                    this.actionTable[stateI][ele] = [str, arr.length]; //即用A->α规约
+                    //注意这里一定要-1,因为多个`
+                    this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
                   }
                 }
               }
@@ -96,6 +229,7 @@ export default {
         }
       }
     },
+    //打印一些数据
     initPrint() {
       console.log(
         "共有 " +
@@ -108,6 +242,7 @@ export default {
       console.log("所有产生式: ", this.productMap);
       console.log("tokenToGrammar: ", this.tokenToGram);
     },
+    //看看是否First集求对了
     checkFirstSymbols() {
       let arr = [],
         n1 = 0,
@@ -199,7 +334,7 @@ export default {
       }
     },
     //有个大问题!可能右部的首非终结符,它自己当前还没求first/follow!那得到的肯定是空数组啊
-    //我选用的就是递归..
+    //我选用的就是递归,就是先求出所需要的东西,然后再push
     getAllFirst() {
       let n = 0;
       //我的IDentifier,FuncIDentifier,String为终结符
@@ -217,6 +352,7 @@ export default {
       );
       console.log(this.firstData);
     },
+    //得到任意文法符号A的First集
     getFirst(A) {
       let obj = this.productMap,
         nonTmA = null;
@@ -297,9 +433,10 @@ export default {
         this.firstProduction[A].all
       ); //再去重
     },
+    //用不着啊,,用到的话就遍历吧
     getAllFollow() {},
+    //得到非终结符A的Follow集
     getFollow(A = "StartProgram") {
-      //非终结符A,??这到底需不需要考虑undefined,也就是第一次的情况呢???
       if (A === "StartProgram") {
         //1.如果A是开始符号的话
         if (this.followData[A] === undefined) {
@@ -356,9 +493,11 @@ export default {
       this.followData[A] = this.getUniqueArr(this.followData[A]);
       // console.log(this.followData[A]);
     },
+    //数组去重
     getUniqueArr(arr) {
       return Array.from(new Set(arr));
     },
+    //得到非ε元素
     getNoεOfArr(arr) {
       return arr.filter((item) => item !== "ε");
     },
@@ -557,6 +696,7 @@ export default {
 
       this.visitedState.push(stateI); //代表这个状态我已经做完了闭包和状态转换
     },
+    //用了SLR1之后是否还有冲突
     isCanSLR1() {
       let obj = this.conflictMap;
       for (let stateI in obj) {
@@ -592,7 +732,7 @@ export default {
     },
     //要用LR(0),则任意一项目集(一个状态)不能同时有移进-规约,也不能同时有规约-规约项目的存在,所以设个flagID判断一下
     //每次检查一个状态内是否有冲突,有一个返回false则代表有冲突,
-    canLR0(stateI) {
+    isCanLR0(stateI) {
       let flag1 = 0,
         flag2 = 0; //移进,规约,默认无冲突
       let shiftArr = [],
@@ -669,8 +809,8 @@ export default {
       console.log("识别活前缀的DFA的状态转换表如下: \n", this.goIXTable);
       console.log("LR(0)的项目集规范族如下: \n", this.closureC);
       for (let i = 0; i <= this.stateCnt; i++) {
-        // console.log(this.canLR0("State" + i));
-        this.canLR0("State" + i);
+        // console.log(this.isCanLR0("State" + i));
+        this.isCanLR0("State" + i);
       } //裂开了,需要用LR1,文法里有4个状态都出现了同时出现移进-规约的冲突
       console.log(
         "共含有 " +
