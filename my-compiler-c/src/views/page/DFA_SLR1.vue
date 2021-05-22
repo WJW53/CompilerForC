@@ -1,10 +1,9 @@
 <template>
   <div class="grammar-analysis">
-    grammar-analysis
     <a-table
       :columns="columnHead"
       :data-source="LRTable"
-      :scroll="{ x: 900, y: 1100 }"
+      :scroll="{ x: 900, y: 800 }"
       class="table"
     >
     </a-table>
@@ -15,7 +14,7 @@
 const columnHead = [
   {
     title: "OrderNumber",
-    width: 150,
+    width: 100,
     dataIndex: "OrderNumber",
     key: "OrderNumber",
   },
@@ -35,7 +34,7 @@ const columnHead = [
     title: "Production",
     dataIndex: "Production",
     key: "Production",
-    width: 150,
+    width: 200,
   },
   {
     title: "InputString",
@@ -112,12 +111,13 @@ export default {
       this.LRTable.push({
         key: OrderNumber,
         OrderNumber,
-        StateStack,
-        SymbolsStack,
+        StateStack: StateStack.join(" "),
+        SymbolsStack: SymbolsStack.join(" "),
         Production,
         InputString: InputString.join(" "),
-        Instruction,
+        Instruction: Instruction + "面临输入符号为: " + InputString[0],
       }); //先将初始状态入栈
+
       let a = InputString.shift(); //首位,注意InputString本身是数组形式
       let stateTop = StateStack[StateStack.length - 1],
         flag = this.actionTable[stateTop][a];
@@ -125,15 +125,16 @@ export default {
       // console.log(this.actionTable);
       // console.log(flag);
       while (flag !== "accept") {
+        ++OrderNumber;
         Production = "";
-        Instruction = ""; //每次先将产生式和说明重新初始化
+        Instruction = "当前输入符号为: " + a + ";\n"; //每次先将产生式和说明重新初始化
         if (flag !== undefined) {
           if (typeof flag === "string") {
-            //即flag类似为StateI,是个字符串,准备移进
-            Instruction = flag + "和" + a + "分别入栈;";
+            //即flag类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
+            Instruction += "进行移进动作: " + flag + "和" + a + "分别入栈;";
             SymbolsStack.push(a);
-            a = InputString.shift();
             StateStack.push(flag);
+            Instruction += "\n面临输入符号: " + InputString[0];
           } else {
             //flag为数组,[产生式,产生式右部的长度]
             let len = flag[1],
@@ -145,14 +146,23 @@ export default {
               let ai = SymbolsStack.pop();
               Instruction = Instruction + si + "和" + ai + "分别退栈;";
             }
-            let A = production.split("->")[0],
-              topPointer = StateStack.length - 1; //准备规约
+            let productArr = production.split("->");
+            let A = productArr[0],
+              right = productArr[1].split(" ");
+            console.log(right);
+            // if(right.length===1&&right[0]==='')
+            let topPointer = StateStack.length - 1; //准备规约
             SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
             let nextState = this.gotoTable[StateStack[topPointer]][A];
             StateStack.push(nextState); //注意规约动作并不改变当前输入符号
-            Instruction = Instruction + nextState + "和" + A + "分别入栈;";
+            Instruction +=
+              "进行规约动作: " +
+              nextState +
+              "和" +
+              A +
+              "分别入栈;\n即将面临符号仍为: " +
+              a;
           }
-          ++OrderNumber;
           let stateString = StateStack.join(","),
             symbolsString = SymbolsStack.join(" "),
             inputString = InputString.join(" ");
@@ -166,12 +176,25 @@ export default {
             InputString: inputString,
             Instruction,
           });
+          if (typeof flag === "string") {
+            a = InputString.shift(); //移进动作时输入符号才后移一位
+          }
           stateTop = StateStack[StateStack.length - 1];
           console.log(stateTop, this.actionTable[stateTop]);
           flag = this.actionTable[stateTop][a];
         } else {
+          console.log(flag);
           //找不到就报错
           console.log("Error");
+          this.LRTable.push({
+            key: OrderNumber,
+            OrderNumber,
+            StateStack: StateStack.join(","),
+            SymbolsStack: SymbolsStack.join(" "),
+            Production,
+            InputString: InputString.join(" "),
+            Instruction: "此处有语法错误!!",
+          });
           break;
         }
       }
@@ -210,20 +233,20 @@ export default {
                 }
               }
             } else {
-              if (idx !== 0) {
-                //A->α`,没有A->`是因为这是不可达状态. key就是A
-                let name = arr[idx - 1];
-                if (name === "Program" && key === "StartProgram") {
-                  this.actionTable[stateI]["$"] = "accept"; //接受状态
-                  console.log(stateI);
-                } else {
-                  let str = key + "->" + arr.join(" ");
-                  for (let ele of this.followData[key]) {
-                    //注意这里一定要-1,因为多个`
-                    this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
-                  }
+              // if (idx !== 0) {
+              //A->α`,没有A->`是因为这是不可达状态. key就是A
+              let name = arr[idx - 1];
+              if (name === "Program" && key === "StartProgram") {
+                this.actionTable[stateI]["$"] = "accept"; //接受状态
+                console.log(stateI);
+              } else {
+                let str = key + "->" + arr.join(" ");
+                for (let ele of this.followData[key]) {
+                  //注意这里一定要-1,因为多个`
+                  this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
                 }
               }
+              // }
             }
           }
         }
