@@ -530,7 +530,7 @@ export default {
     changeTypeForGram(token, nextToken) {
       let type = token.type;
       if (type === "integer") {
-        this.tokenToGram.push("IntergerPart");
+        this.tokenToGram.push("IntegerPart");
       } else if (type === "float") {
         this.tokenToGram.push("FloatNumber");
       } else if (

@@ -9,7 +9,7 @@ ValueDeclaration::=ConstDeclaration@VariableDeclaration
 ConstDeclaration::=const IDType ConstDeclarationList
 IDType::=boolean@char@int@float@double
 ConstDeclarationList::=IDentifier = CONST ConstDeclarationList1
-ConstDeclarationList1::=ConstDeclarationList@ε
+ConstDeclarationList1::=;@, ConstDeclarationList
 VariableDeclaration::=IDType ArrayOrNormal
 ArrayOrNormal::=VariableDeclarationList@ArrayPostfixes
 ArrayPostfixes::=ArrayIDentifier [ ArrayLength ] = ArrayContent ;
@@ -20,7 +20,7 @@ ArrayContentNumber0::=IntegerPart ArrayContentNumber1@ε
 ArrayContentNumber1::=, IntegerPart ArrayContentNumber2
 ArrayContentNumber2::=ArrayContentNumber1@ε
 VariableDeclarationList::=SingleVariableDeclaration VariableDeclarationList1
-SingleVariableDeclaration::=VARIABLE@SingleVariableDeclaration1
+SingleVariableDeclaration::=VARIABLE SingleVariableDeclaration1
 SingleVariableDeclaration1::== Expression@ε
 VariableDeclarationList1::=;@, VariableDeclarationList
 FunctionDeclaration::=FunctionType FuncIDentifier ( FuncDeclareParameterList ) ;
@@ -50,7 +50,7 @@ BooleanExpr1::=|| BooleanItem BooleanExpr@ε
 BooleanItem::=BooleanFactor BooleanItem1
 BooleanItem1::=&& BooleanFactor BooleanItem@ε
 BooleanFactor::=ArithmeticExpr@RelationalExpr@! BooleanExpr
-AssignExpr::=IDentifier AssignOperator Expression
+AssignExpr::=VARIABLE AssignOperator Expression
 AssignOperator::==@+=@-=@*=@/=@%=@>>=@<<=@&=@|=
 FunctionCallStce::=FunctionCall ;
 ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce

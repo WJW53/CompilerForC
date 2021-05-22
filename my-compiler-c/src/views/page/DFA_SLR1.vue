@@ -51,6 +51,7 @@ export default {
       columnHead,
       actionTable: {},
       gotoTable: {},
+      canToEmpty: {},
       LRTable: [], //[{里面有6+1个属性,对应表的列头名}]
       allSymbols: this.$store.state.compilation.allSymbols,
       tokenToGram: this.$store.state.compilation.tokenToGram,
@@ -81,8 +82,12 @@ export default {
   methods: {
     //语法分析开关
     startGrammarAnalysis() {
+      // console.log(this.isACanToEmpty("DeclarationStce"));
       this.initPrint();
       this.getAllFirst(); //得到所有First集
+      this.getAllFollow();
+      console.log(this.followData.HeadFiles);
+      console.log(this.followData.CONST);
       this.checkFirstSymbols();
       this.constructDfaToIdentifyViablePrefix();
       let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
@@ -92,8 +97,8 @@ export default {
       this.$store.state.compilation.previewData = str;
       // console.log(this.ixList);
       this.getSLR1AnalsisTable();
-      console.log(this.actionTable);
-      console.log(this.gotoTable);
+      console.log("action表: ", this.actionTable);
+      console.log("goto表: ", this.gotoTable);
       this.startExecutiveProgram();
     },
     //LR分析的总控程序
@@ -127,7 +132,7 @@ export default {
       while (flag !== "accept") {
         ++OrderNumber;
         Production = "";
-        Instruction = "当前输入符号为: " + a + ";\n"; //每次先将产生式和说明重新初始化
+        Instruction = "当前输入符号为: " + a + "  \n"; //每次先将产生式和说明重新初始化
         if (flag !== undefined) {
           if (typeof flag === "string") {
             //即flag类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
@@ -139,8 +144,8 @@ export default {
             //flag为数组,[产生式,产生式右部的长度]
             let len = flag[1],
               production = flag[0];
-            Production = production.slice(0, production.length - 1);
-            console.log(Production, len);
+            Production = production.slice(0, production.length - 1); //去掉`
+            // console.log(Production, len);
             while (len--) {
               let si = StateStack.pop();
               let ai = SymbolsStack.pop();
@@ -180,10 +185,9 @@ export default {
             a = InputString.shift(); //移进动作时输入符号才后移一位
           }
           stateTop = StateStack[StateStack.length - 1];
-          console.log(stateTop, this.actionTable[stateTop]);
+          console.log(stateTop, a, this.actionTable[stateTop]);
           flag = this.actionTable[stateTop][a];
         } else {
-          console.log(flag);
           //找不到就报错
           console.log("Error");
           this.LRTable.push({
@@ -193,7 +197,7 @@ export default {
             SymbolsStack: SymbolsStack.join(" "),
             Production,
             InputString: InputString.join(" "),
-            Instruction: "此处有语法错误!!",
+            Instruction: "当前输入符号为: " + a + "  \n" + "此处有语法错误!!",
           });
           break;
         }
@@ -233,20 +237,20 @@ export default {
                 }
               }
             } else {
-              // if (idx !== 0) {
-              //A->α`,没有A->`是因为这是不可达状态. key就是A
-              let name = arr[idx - 1];
-              if (name === "Program" && key === "StartProgram") {
-                this.actionTable[stateI]["$"] = "accept"; //接受状态
-                console.log(stateI);
-              } else {
-                let str = key + "->" + arr.join(" ");
-                for (let ele of this.followData[key]) {
-                  //注意这里一定要-1,因为多个`
-                  this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
+              if (idx !== 0) {
+                //A->α`,没有A->`是因为这是不可达状态. key就是A
+                let name = arr[idx - 1];
+                if (name === "Program" && key === "StartProgram") {
+                  this.actionTable[stateI]["$"] = "accept"; //接受状态
+                  console.log(stateI);
+                } else {
+                  let str = key + "->" + arr.join(" ");
+                  for (let ele of this.followData[key]) {
+                    //注意这里一定要-1,因为多个`
+                    this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
+                  }
                 }
               }
-              // }
             }
           }
         }
@@ -317,43 +321,56 @@ export default {
     //我写的文法若A能推出空,则它前面必有其他的产生式
     //需要避免循环推导问题吗?可用缓存处理,不过我这没必要吧,因为我文法不会造成这种状况
     isACanToEmpty(A) {
-      //说明这个函数有问题啊
+      // console.log(this.canToEmpty);
+      if (this.canToEmpty[A] !== undefined) {
+        return this.canToEmpty[A];
+      }
       let obj = this.productMap;
-      let flag1 = false,
-        flag2 = false,
-        canToε = flag1 || flag2;
       if (obj[A] !== undefined) {
-        //当A为非终结符时,遍历A的产生式
-        for (let a1 of obj[A]) {
-          for (let i = 0, len = a1.length; i < len; i++) {
-            let flag = this.nonTerminal.includes(a1[i]);
-            if (flag === false && a1[i] !== "ε") {
-              //如果该序列存在非空的终结符,那这一条产生式肯定推不出空,则可跳出当前循环
-              flag1 = false;
-              break;
-            } else if (a1[i] === "ε") {
-              continue; //继续判断下一位
-            } else if (flag === true) {
-              flag1 = this.isACanToEmpty(a1[i]); //非终结符则直接递归
-              if (flag1 === false) {
-                break; //同样,代表这条产生式推不出空了,因为至少存在了一个非终结符推不出
-              } else {
-                continue; //true的话就继续往下找呗
+        let tail = obj[A][obj[A].length - 1];
+        if (tail.length === 1 && tail[0] === "ε") {
+          this.canToEmpty[A] = true; //这是最后一条产生式
+          return true;
+        }
+        for (let i = 0, lenA = obj[A].length; i < lenA; i++) {
+          let arr = obj[A][i];
+          for (let j = 0, len = arr.length; j < len; j++) {
+            let X = arr[j];
+            // console.log(A, X);
+            if (this.nonTerminal.includes(X)) {
+              //非终结符先查表,表里没有就递归查
+              let flag = this.isACanToEmpty(X);
+              if (flag === false) {
+                break; //这条不用再找了,它都推不出,这一条产生式后面的符号也不用看了
               }
+              if (flag === true && j === arr.length - 1) {
+                this.canToEmpty[A] = true;
+                return true;
+              }
+            } else {
+              this.canToEmpty[X] = X === "ε"; //卧槽了,这条隐藏的好细啊
+              if (
+                this.canToEmpty[arr[j - 1]] &&
+                this.canToEmpty[X] &&
+                j === arr.length - 1
+              ) {
+                this.canToEmpty[A] = true;
+                return true;
+              } else {
+                break;
+              }
+              //但X为false时这里还不能return,因为A还有其他产生式呢
             }
           }
-          if (flag1 === true) {
-            return true; //说明A已经找到一条产生式能推出空了
-          } else {
-            continue; //找下一个产生式
-          }
         }
-        //找完了都还没返回true,则此处返回false
+        //循环都搞完了还不返回,那就是false了
+        this.canToEmpty[A] = false;
         return false;
-      } else if (A === "ε") {
-        return true;
       } else {
-        return false;
+        //好像有个地方是终结符,那这里多做个处理
+        let flag1 = A === "ε";
+        this.canToEmpty[A] = flag1;
+        return flag1;
       }
     },
     //有个大问题!可能右部的首非终结符,它自己当前还没求first/follow!那得到的肯定是空数组啊
@@ -363,7 +380,6 @@ export default {
       //我的IDentifier,FuncIDentifier,String为终结符
       let obj = this.firstProduction;
       for (let A of this.allSymbols) {
-        // if (obj[A] === undefined)//不能加这个判断否则求不全
         this.getFirst(A); //没事,我做了去重的,所以即便有重复也没关系
       }
       for (let key in obj) {
@@ -378,11 +394,10 @@ export default {
     //得到任意文法符号A的First集
     getFirst(A) {
       let obj = this.productMap,
-        nonTmA = null;
+        nonTmA = this.nonTerminal.includes(A);
       if (this.firstProduction[A] === undefined) {
         //A是任一文法符号,所以下面针对终结符有另外的处理
         this.$set(this.firstProduction, A, {}); //第一次的时候
-        nonTmA = this.nonTerminal.includes(A);
         if (nonTmA) {
           this.firstProduction[A].all = [];
         } else {
@@ -397,10 +412,13 @@ export default {
           if (this.firstProduction[A][str] === undefined) {
             this.firstProduction[A][str] = [];
           }
-          if (this.nonTerminal.includes(arr[0]) === false) {
+          if (this.terminal.includes(arr[0]) === true) {
+            //终结符的话
             this.firstProduction[A][str].push(arr[0]);
-            this.$set(this.firstProduction, arr[0], {}); //顺便在非终结符时直接求First(A)
-            this.firstProduction[arr[0]].all = [arr[0]];
+            if (this.firstProduction[arr[0]] === undefined) {
+              this.$set(this.firstProduction, arr[0], {}); //顺便在终结符时直接求First(a)
+              this.firstProduction[arr[0]].all = [arr[0]];
+            }
             // console.log("1", this.firstProduction[A]);
           } else {
             //非终结符时
@@ -421,7 +439,7 @@ export default {
               if (i > 0 && flag === false && i < len - 1) {
                 //到这里不能推出空了
                 // console.log(arr[i] + "不能经过有限次推导推出空");
-                if (this.nonTerminal.includes(arr[i]) === false) {
+                if (this.terminal.includes(arr[i]) === false) {
                   //终结符的时候,且是第一次
                   if (this.firstProduction[arr[i]] === undefined) {
                     this.$set(this.firstProduction, arr[i], {});
@@ -447,17 +465,20 @@ export default {
         }
       }
       for (let k in this.firstProduction[A]) {
-        if (k !== "all") {
-          //再把所有产生式结合起来
-          this.firstProduction[A].all.push(...this.firstProduction[A][k]);
-        }
+        //再把所有产生式的first集取并集
+        this.firstProduction[A].all.push(...this.firstProduction[A][k]);
       }
       this.firstProduction[A].all = this.getUniqueArr(
         this.firstProduction[A].all
       ); //再去重
     },
     //用不着啊,,用到的话就遍历吧
-    getAllFollow() {},
+    getAllFollow() {
+      let arr = this.nonTerminal;
+      for (let A of arr) {
+        this.getFollow(A);
+      }
+    },
     //得到非终结符A的Follow集
     getFollow(A = "StartProgram") {
       if (A === "StartProgram") {
@@ -475,20 +496,34 @@ export default {
       for (let key in obj) {
         for (let arr of obj[key]) {
           let idx = arr.indexOf(A);
-          //若A后紧跟终结符且不是空
+
           if (idx > -1) {
+            //A后面还有符号
             if (idx !== arr.length - 1) {
+              let X = arr[idx + 1];
+              let flag = this.nonTerminal.includes(X);
               //A不是最后一位且后面有一个终结符
-              let flag = this.nonTerminal.includes(arr[idx + 1]);
-              if (flag === false && arr[idx + 1] !== "ε") {
-                this.followData[A].push(arr[idx + 1]);
+              if (flag === false && X !== "ε") {
+                this.followData[A].push(X);
               }
               //3.形如A->αB(α可以是终结符或者非终结符或者直接为空)或者A->αBβ是一个产生式且β=*>ε
               //将Follow(A)加入到Follow(B)中
               if (flag === true) {
                 //是非终结符的话,首先直接加入它的First集且非空元素
-                let temp = this.getNoεOfArr(this.firstData[arr[idx + 1]]);
+                let temp = this.getNoεOfArr(this.firstData[X]);
                 this.followData[A].push(...temp);
+                //这里是精髓哦!!为了S->XAY,A->`的情况,应该跳过A不做判断的,也就是把Y的First加入X的Follow中即可
+                //如果X能推出空,那么就把X的下一位且为非终结符的符号β的First加入A中
+                if (this.isACanToEmpty(X)) {
+                  let any = arr[idx + 2]; //β为任意符号,除了空
+                  if (any !== undefined) {
+                    let temp2 = this.getNoεOfArr(this.firstData[any]);
+                    this.followData[A].push(...temp2); //不对啊卧槽,我的follow最后是去重的
+                    //Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
+                    //这个产生式里,DeclarationStce可以为空,就算把int加入HeadFiles里面,但是DeclarationStce
+                    //的First集里本身也有int,到时候还是会面临移进-规约冲突啊
+                  }
+                }
                 //再看β能否经有限次推导推出空,β是个符号串,即从idx+1开始的,arr里的元素
                 for (let j = idx + 1; j < arr.length; j++) {
                   let canToε = this.isACanToEmpty(arr[j]);
