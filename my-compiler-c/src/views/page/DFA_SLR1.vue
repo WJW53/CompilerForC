@@ -247,7 +247,7 @@ export default {
               if (idx !== 0) {
                 //这是上面说的那种特殊情况,其实就是因为A->`而造成的
                 if (this.canToEmpty[arr[idx - 1]]) {
-                  console.log(arr[idx - 1]);
+                  // console.log(arr[idx - 1]);
                   this.gotoTable[stateI][key] = this.gotoTable[stateI][
                     arr[idx - 1]
                   ];
@@ -651,9 +651,16 @@ export default {
           ) {
             //注意!!!!!找到了A->...`B...,现在要去找B->`γ
             //但是这里要做个特殊处理就是B可以推出空的时候,就要吧A->αB`β也加入这个闭包I中
+            //但是为了action表里那个length是正常的,所以要进行的是用`替换B,
+            //即将A->α`β加入该状态中,这个小细节隐藏的很深啊..我找了一俩小时的bug
             if (this.isACanToEmpty(nonTm)) {
-              let tempK = [...item];
-              [tempK[idx], tempK[idx + 1]] = [tempK[idx + 1], tempK[idx]];
+              let tempK = [];
+              for (let ele of item) {
+                if (ele !== nonTm) {
+                  tempK.push(ele);
+                }
+              }
+              // [tempK[idx], tempK[idx + 1]] = [tempK[idx + 1], tempK[idx]];
               this.closureC[index][key].push([...tempK]);
             }
             //3.更新Statei,从里面继续重复执行上述两步,直到没有更多的项目能加入Closure(I)中
