@@ -106,7 +106,7 @@ const routes = [
       //   path: 'LL1',
       //   name: "LL1",
       //   meta: {
-      //     title: 'LL1',
+      //     title: '预测分析法',
       //     icon: 'edit',
       //     hidden: false,
       //   },
@@ -116,22 +116,22 @@ const routes = [
       //   path: 'RecursiveDescent',
       //   name: "RecursiveDescent",
       //   meta: {
-      //     title: '递归下降',
+      //     title: '递归下降法',
       //     icon: 'edit',
       //     hidden: false,
       //   },
       //   component: () => import("../views/page/RecursiveDescent.vue"),
       // },
-      // {
-      //   path: 'LR1',
-      //   name: "LR1",
-      //   meta: {
-      //     title: 'LR1分析法',
-      //     icon: 'edit',
-      //     hidden: false,
-      //   },
-      //   component: () => import("../views/page/LR1.vue"),
-      // },
+      {
+        path: 'LR1',
+        name: "LR1",
+        meta: {
+          title: 'LR1分析法',
+          icon: 'edit',
+          hidden: false,
+        },
+        component: () => import("../views/page/LR1_END.vue"),
+      },
     ],
   },
   {

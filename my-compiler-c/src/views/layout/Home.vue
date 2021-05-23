@@ -11,7 +11,8 @@
 <script>
 import LeftMenu from "./components/Menu";
 import SliderNav from "./components/SliderNav";
-import obj from "@/storage/production.js";
+import obj from "@/storage/production2.js";
+// import obj from "@/storage/production3.js";
 export default {
   components: {
     LeftMenu,

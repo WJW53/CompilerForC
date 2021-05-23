@@ -82,27 +82,34 @@ export default {
   methods: {
     //语法分析开关
     startGrammarAnalysis() {
+    //   for (let key of this.nonTerminal) {
+    //     this.isACanToEmpty(key);
+    //   }
+    //   let arr = [];
+    //   for (let key in this.canToEmpty) {
+    //     if (this.canToEmpty[key]) {
+    //       arr.push(key);
+    //     }
+    //   }
+    //   console.log(arr);
       // console.log(this.isACanToEmpty("DeclarationStce"));
-      this.initPrint();
-      this.getAllFirst(); //得到所有First集
-      this.getAllFollow();
-      console.log(this.followData.FuncDeclareParameter1);
-      console.log(this.followData.FuncDeclareParameter);
-
-      console.log(this.followData.HeadFiles);
-      console.log(this.followData.CONST);
-      this.checkFirstSymbols();
-      this.constructDfaToIdentifyViablePrefix();
-      let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
-      for (let arr of this.ixList) {
-        str = str + arr.join("\t") + "\n";
-      }
-      this.$store.state.compilation.previewData = str;
-      // console.log(this.ixList);
-      this.getSLR1AnalsisTable();
-      console.log("action表: ", this.actionTable);
-      console.log("goto表: ", this.gotoTable);
-      this.startExecutiveProgram();
+        this.initPrint();
+        this.getAllFirst(); //得到所有First集
+        this.getAllFollow();
+        // console.log(this.followData.HeadFiles);
+        // console.log(this.followData.CONST);
+        this.checkFirstSymbols();
+        this.constructDfaToIdentifyViablePrefix();
+        let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
+        for (let arr of this.ixList) {
+          str = str + arr.join("\t") + "\n";
+        }
+        this.$store.state.compilation.previewData = str;
+        // console.log(this.ixList);
+        this.getSLR1AnalsisTable();
+        console.log("action表: ", this.actionTable);
+        console.log("goto表: ", this.gotoTable);
+        this.startExecutiveProgram();
     },
     //LR分析的总控程序
     startExecutiveProgram() {
@@ -157,11 +164,10 @@ export default {
             let productArr = production.split("->");
             let A = productArr[0],
               right = productArr[1].split(" ");
-            // console.log(right);
+            console.log(right);
             // if(right.length===1&&right[0]==='')
             let topPointer = StateStack.length - 1; //准备规约
             SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
-            console.log(this.gotoTable[StateStack[topPointer]], A);
             let nextState = this.gotoTable[StateStack[topPointer]][A];
             StateStack.push(nextState); //注意规约动作并不改变当前输入符号
             Instruction +=
@@ -188,7 +194,6 @@ export default {
           if (typeof flag === "string") {
             a = InputString.shift(); //移进动作时输入符号才后移一位
           }
-          console.log(StateStack.length - 1);
           stateTop = StateStack[StateStack.length - 1];
           console.log(stateTop, a, this.actionTable[stateTop]);
           flag = this.actionTable[stateTop][a];
@@ -229,8 +234,6 @@ export default {
           let arr2d = STATE[key];
           for (let arr of arr2d) {
             let idx = arr.indexOf("`");
-            //首先这里考虑个特殊情况,就是S->X`A,A->`,所以我的状态里也有S->XA`
-            //故后面这个应该是: 吃了S之后推出的状态与它吃了A之后所goto的状态一致
             if (idx !== arr.length - 1) {
               let X = arr[idx + 1];
               let stateJ = obj[stateI][X]; //goIXTable
@@ -245,13 +248,6 @@ export default {
               }
             } else {
               if (idx !== 0) {
-                //这是上面说的那种特殊情况,其实就是因为A->`而造成的
-                if (this.canToEmpty[arr[idx - 1]]) {
-                  console.log(arr[idx - 1]);
-                  this.gotoTable[stateI][key] = this.gotoTable[stateI][
-                    arr[idx - 1]
-                  ];
-                }
                 //A->α`,没有A->`是因为这是不可达状态. key就是A
                 let name = arr[idx - 1];
                 if (name === "Program" && key === "StartProgram") {
@@ -259,7 +255,6 @@ export default {
                   console.log(stateI);
                 } else {
                   let str = key + "->" + arr.join(" ");
-                  //这里缺了个ele为结束符$的情况?
                   for (let ele of this.followData[key]) {
                     //注意这里一定要-1,因为多个`
                     this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
@@ -284,8 +279,6 @@ export default {
       console.log("所有产生式: ", this.productMap);
       console.log("拓广后的allProject: ", this.allProject);
       console.log("tokenToGrammar: ", this.tokenToGram);
-      this.getAllCanToEmpty();
-      console.log("所有符号能否推出空: ", this.canToEmpty);
     },
     //看看是否First集求对了
     checkFirstSymbols() {
@@ -334,11 +327,6 @@ export default {
       }
       // console.log(this.allProject);
       console.log("扩广文法总共" + count + "个项目");
-    },
-    getAllCanToEmpty() {
-      for (let A of this.allSymbols) {
-        this.isACanToEmpty(A);
-      }
     },
     //文法符号A能否经过有限次推导,推出空
     //我写的文法若A能推出空,则它前面必有其他的产生式
@@ -535,18 +523,18 @@ export default {
                 //是非终结符的话,首先直接加入它的First集且非空元素
                 let temp = this.getNoεOfArr(this.firstData[X]);
                 this.followData[A].push(...temp);
-                //ps:这里是精髓哦!!为了S->XAY,A->`的情况,应该跳过A不做判断的,也就是把Y的First加入X的Follow中即可
+                //这里是精髓哦!!为了S->XAY,A->`的情况,应该跳过A不做判断的,也就是把Y的First加入X的Follow中即可
                 //如果X能推出空,那么就把X的下一位且为非终结符的符号β的First加入A中
-                // if (this.isACanToEmpty(X)) {
-                //   let any = arr[idx + 2]; //β为任意符号,除了空
-                //   if (any !== undefined) {
-                //     let temp2 = this.getNoεOfArr(this.firstData[any]);
-                //     this.followData[A].push(...temp2); //不对啊卧槽,我的follow最后是去重的
-                //     //Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
-                //     //这个产生式里,DeclarationStce可以为空,就算把int加入HeadFiles里面,但是DeclarationStce
-                //     //的First集里本身也有int,到时候还是会面临移进-规约冲突啊
-                //   }
-                // }
+                if (this.isACanToEmpty(X)) {
+                  let any = arr[idx + 2]; //β为任意符号,除了空
+                  if (any !== undefined) {
+                    let temp2 = this.getNoεOfArr(this.firstData[any]);
+                    this.followData[A].push(...temp2); //不对啊卧槽,我的follow最后是去重的
+                    //Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
+                    //这个产生式里,DeclarationStce可以为空,就算把int加入HeadFiles里面,但是DeclarationStce
+                    //的First集里本身也有int,到时候还是会面临移进-规约冲突啊
+                  }
+                }
                 //再看β能否经有限次推导推出空,β是个符号串,即从idx+1开始的,arr里的元素
                 for (let j = idx + 1; j < arr.length; j++) {
                   let canToε = this.isACanToEmpty(arr[j]);
@@ -649,7 +637,7 @@ export default {
             this.nonTerminal.includes(nonTm) &&
             nonTm !== undefined
           ) {
-            //注意!!!!!找到了A->...`B...,现在要去找B->`γ
+            //找到了A->...`B...,现在要去找B->`γ
             //但是这里要做个特殊处理就是B可以推出空的时候,就要吧A->αB`β也加入这个闭包I中
             if (this.isACanToEmpty(nonTm)) {
               let tempK = [...item];
