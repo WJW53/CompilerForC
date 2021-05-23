@@ -86,11 +86,7 @@ export default {
       this.initPrint();
       this.getAllFirst(); //得到所有First集
       this.getAllFollow();
-      console.log(this.followData.FuncDeclareParameter1);
-      console.log(this.followData.FuncDeclareParameter);
-
-      console.log(this.followData.HeadFiles);
-      console.log(this.followData.CONST);
+      console.log(this.followData.Expression);
       this.checkFirstSymbols();
       this.constructDfaToIdentifyViablePrefix();
       let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
@@ -158,12 +154,20 @@ export default {
             let A = productArr[0],
               right = productArr[1].split(" ");
             // console.log(right);
-            // if(right.length===1&&right[0]==='')
             let topPointer = StateStack.length - 1; //准备规约
             SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
-            console.log(this.gotoTable[StateStack[topPointer]], A);
+            console.log(
+              "规约:",
+              StateStack[topPointer],
+              this.gotoTable[StateStack[topPointer]],
+              A
+            );
             let nextState = this.gotoTable[StateStack[topPointer]][A];
             StateStack.push(nextState); //注意规约动作并不改变当前输入符号
+            console.log(
+              "NextState: " + nextState,
+              A + "的Follow集合为: " + this.followData[A]
+            );
             Instruction +=
               "进行规约动作: " +
               nextState +
@@ -255,8 +259,8 @@ export default {
                 //A->α`,没有A->`是因为这是不可达状态. key就是A
                 let name = arr[idx - 1];
                 if (name === "Program" && key === "StartProgram") {
-                  this.actionTable[stateI]["$"] = "accept"; //接受状态
-                  console.log(stateI);
+                  this.actionTable[stateI]["$"] = "accept"; //接受状态,到底设为$还是accept呢?
+                  console.log("结束状态在: " + stateI);
                 } else {
                   let str = key + "->" + arr.join(" ");
                   //这里缺了个ele为结束符$的情况?
@@ -264,6 +268,7 @@ export default {
                     //注意这里一定要-1,因为多个`
                     this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
                   }
+                  // this.actionTable[stateI]["$"] = [str, arr.length - 1];
                 }
               }
             }
@@ -865,7 +870,7 @@ export default {
         for (let arr of this.conflictMap[stateI]["reduceConflict"]) {
           let key = arr[0].split("->")[0];
           this.conflictMap[stateI][key] = this.followData[key];
-          console.log(key + "的Follow集合", this.followData[key]);
+          // console.log(key + "的Follow集合", this.followData[key]);
         }
         return false; //冲突
       } else {
