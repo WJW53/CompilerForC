@@ -3,7 +3,7 @@
     <a-table
       :columns="columnHead"
       :data-source="LRTable"
-      :scroll="{ x: 900, y: 800 }"
+      :scroll="{ x: 900, y: 700 }"
       class="table"
     >
     </a-table>
@@ -87,8 +87,10 @@ export default {
       this.getAllFirst(); //得到所有First集
       this.getAllFollow();
       console.log(this.followData.Expression);
+      console.log(this.followData.StartProgram);
       this.checkFirstSymbols();
       this.constructDfaToIdentifyViablePrefix();
+
       let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
       for (let arr of this.ixList) {
         str = str + arr.join("\t") + "\n";
@@ -140,11 +142,38 @@ export default {
             StateStack.push(flag);
             Instruction += "\n面临输入符号: " + InputString[0];
           } else {
+            let realFlag = flag;
+            // let realFlag = null;
             //flag为数组,[产生式,产生式右部的长度]
-            let len = flag[1],
-              production = flag[0];
+            // if (Array.isArray(flag[0])) {
+            //   let isTrue = fasle;
+            //   for (let j = 0; j < flag.length; j++) {
+            //     let arr = flag[j];
+            //     //直接比最前面那个是否相同即可
+            //     let len1 = arr.length,
+            //       len2 = SymbolsStack.length;
+            //     for (let i = 0; i < len1; i++) {
+            //       if (
+            //         i === len1 - 1 &&
+            //         arr[i] === SymbolsStack[len2 - len1 + i]
+            //       ) {
+            //         isTrue = true;
+            //       }
+            //     }
+            //     if (isTrue) {
+            //       realFlag = arr;
+            //       break;
+            //     }
+            //   }
+            //   if (isTrue === false) {
+            //     console.log("怎么可能,那说明有地方搞错了!!");
+            //   }
+            // } else {
+            //   realFlag = flag;
+            // }
+            let len = realFlag[1],
+              production = realFlag[0];
             Production = production.slice(0, production.length - 1); //去掉`
-            // console.log(Production, len);
             while (len--) {
               let si = StateStack.pop();
               let ai = SymbolsStack.pop();
@@ -153,21 +182,21 @@ export default {
             let productArr = production.split("->");
             let A = productArr[0],
               right = productArr[1].split(" ");
-            // console.log(right);
+            // console.log(Production,len,right);
             let topPointer = StateStack.length - 1; //准备规约
             SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
-            console.log(
-              "规约:",
-              StateStack[topPointer],
-              this.gotoTable[StateStack[topPointer]],
-              A
-            );
+            // console.log(
+            //   "规约:",
+            //   StateStack[topPointer],
+            //   this.gotoTable[StateStack[topPointer]],
+            //   A
+            // );
             let nextState = this.gotoTable[StateStack[topPointer]][A];
             StateStack.push(nextState); //注意规约动作并不改变当前输入符号
-            console.log(
-              "NextState: " + nextState,
-              A + "的Follow集合为: " + this.followData[A]
-            );
+            // console.log(
+            //   "NextState: " + nextState,
+            //   A + "的Follow集合为: " + this.followData[A]
+            // );
             Instruction +=
               "进行规约动作: " +
               nextState +
@@ -192,10 +221,16 @@ export default {
           if (typeof flag === "string") {
             a = InputString.shift(); //移进动作时输入符号才后移一位
           }
-          console.log(StateStack.length - 1);
+          //此处的actionTable里若报错,说明是stateTop为undefined,也就是上面规约操作从goto表中
+          //得到的状态为undefined!!
           stateTop = StateStack[StateStack.length - 1];
-          console.log(stateTop, a, this.actionTable[stateTop]);
           flag = this.actionTable[stateTop][a];
+          // console.log(
+          //   StateStack.length - 1,
+          //   stateTop,
+          //   a,
+          //   this.actionTable[stateTop]
+          // );
         } else {
           //找不到就报错
           console.log("Error");
@@ -210,9 +245,21 @@ export default {
           });
           break;
         }
-      }
-      if (flag !== undefined) {
-        console.log("分析成功了");
+        if (flag === "accept") {
+          ++OrderNumber;
+          StateStack.pop();
+          SymbolsStack.push("$");
+          this.LRTable.push({
+            key: OrderNumber,
+            OrderNumber,
+            StateStack: StateStack.join(","),
+            SymbolsStack: SymbolsStack.join(" "),
+            Production: "",
+            InputString: InputString.join(" "),
+            Instruction: "恭喜您!!源程序无语法错误!!LR分析成功",
+          });
+          console.log("LR分析成功!!");
+        }
       }
     },
     //构造SLR1分析表
@@ -240,22 +287,23 @@ export default {
               let stateJ = obj[stateI][X]; //goIXTable
               //若项目A->α`Xβ且GO(Ik,X)=Ij
               if (stateJ !== undefined) {
+                // //我这里有写的有问题,这个写不写无所谓,只是确实有一种特殊情况要考虑,我想想要写在哪里放在哪里
+                // // //这是上面说的那种特殊情况,其实就是因为A->`而造成的
+                // if (this.canToEmpty[arr[idx - 1]]) {
+                //   // console.log(arr[idx - 1]);
+                //   this.gotoTable[stateI][arr[idx - 1]] =
+                //     obj[stateI][arr[idx - 1]];
+                //   console.log(this.gotoTable[stateI][key]); //这个,..这个bug,太nb了..
+                // }
                 if (this.terminal.includes(X)) {
                   //若X为终结符
-                  this.actionTable[stateI][X] = obj[stateI][X]; //obj是goIXTable
+                  this.actionTable[stateI][X] = stateJ; //obj是goIXTable
                 } else {
-                  this.gotoTable[stateI][X] = obj[stateI][X]; //这就是后继状态j
+                  this.gotoTable[stateI][X] = stateJ; //这就是后继状态j
                 }
               }
             } else {
               if (idx !== 0) {
-                //这是上面说的那种特殊情况,其实就是因为A->`而造成的
-                if (this.canToEmpty[arr[idx - 1]]) {
-                  // console.log(arr[idx - 1]);
-                  this.gotoTable[stateI][key] = this.gotoTable[stateI][
-                    arr[idx - 1]
-                  ];
-                }
                 //A->α`,没有A->`是因为这是不可达状态. key就是A
                 let name = arr[idx - 1];
                 if (name === "Program" && key === "StartProgram") {
@@ -268,7 +316,14 @@ export default {
                     //注意这里一定要-1,因为多个`
                     this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
                   }
-                  // this.actionTable[stateI]["$"] = [str, arr.length - 1];
+                  // if (this.actionTable[stateI]["$"] === undefined) {
+                  //   this.actionTable[stateI]["$"] = [[str, arr.length - 1]];
+                  // } else {
+                  //   this.actionTable[stateI]["$"].push([str, arr.length - 1]);
+                  // }
+                  if (this.actionTable[stateI]["$"] === undefined) {
+                    this.actionTable[stateI]["$"] = [str, arr.length - 1];
+                  }
                 }
               }
             }
@@ -509,14 +564,12 @@ export default {
     },
     //得到非终结符A的Follow集
     getFollow(A = "StartProgram") {
-      if (A === "StartProgram") {
-        //1.如果A是开始符号的话
-        if (this.followData[A] === undefined) {
-          this.followData[A] = ["$"];
-        }
-      }
       if (this.followData[A] === undefined) {
-        this.followData[A] = [];
+        if (A === "StartProgram") {
+          this.followData[A] = ["$"]; //1.如果A是开始符号的话
+        } else {
+          this.followData[A] = []; //不是的话
+        }
       }
       let obj = this.productMap;
       //2.形如A->αBβ,β只要非空其他均可,α可以为空;将First(β)\{ε}即First(β)除去ε,加入Follow(B)中
@@ -540,7 +593,8 @@ export default {
                 //是非终结符的话,首先直接加入它的First集且非空元素
                 let temp = this.getNoεOfArr(this.firstData[X]);
                 this.followData[A].push(...temp);
-                //ps:这里是精髓哦!!为了S->XAY,A->`的情况,应该跳过A不做判断的,也就是把Y的First加入X的Follow中即可
+                //ps:后来发现这里写没用,应该在求闭包的时候判断
+                //为了S->XAY,A->`的情况,应该跳过A不做判断的,也就是把Y的First加入X的Follow中即可
                 //如果X能推出空,那么就把X的下一位且为非终结符的符号β的First加入A中
                 // if (this.isACanToEmpty(X)) {
                 //   let any = arr[idx + 2]; //β为任意符号,除了空
@@ -692,6 +746,42 @@ export default {
       this.followGramSymbols[stateI] = res;
       // this.$set(this.followGramSymbols, stateI, res);
     },
+    //为了空弧做的特殊处理
+    go_i_empty() {
+      let arr = [],
+        obj = this.canToEmpty;
+      for (let key in obj) {
+        if (obj[key]) {
+          arr.push(key);
+        }
+      }
+      let C = this.closureC;
+      for (let stateI in C) {
+        let state = C[stateI];
+        for (let k in state) {
+          if (arr.includes(k)) {
+            console.log(stateI, k);
+            let S1;
+            if (this.goIXTable[stateI] !== undefined) {
+              S1 = this.goIXTable[stateI][k]; //吃了k到达的状态
+            }
+            if (S1 !== undefined) {
+              //再找到S1所能到达的所有状态
+              for (let key2 in S1) {
+                let Sj;
+                if (this.goIXTable[S1] !== undefined) {
+                  Sj = this.goIXTable[S1][key2];
+                }
+                //令原状态吃key2到Sj
+                if (Sj !== undefined) {
+                  this.goIXTable[stateI][key2] = Sj;
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     //求Statei面临文法符号X时的下一状态GO(I,X) = Closure( move(I,X) )
     go_i_x(stateI, X) {
       //先求move(I,X),记得在合适的时机将this.stateCnt++;
@@ -709,7 +799,7 @@ export default {
             }
             temp = [...arr];
             temp[idx] = X; //将其变为后继状态
-            temp[idx + 1] = "`";
+            temp[idx + 1] = "`"; //交换`和X的位置
             move_i_x[key].push(temp);
             empty = false; //代表move_i_x不为空
           }
@@ -904,6 +994,7 @@ export default {
         }
         len2 = this.stateCnt;
       } while (len1 < len2); // || this.visitedState.length < this.stateCnt + 1
+      // this.go_i_empty();
       console.log("总共" + this.stateCnt + "个状态(项目集)");
       console.log("识别活前缀的DFA的状态转换表如下: \n", this.goIXTable);
       console.log("LR(0)的项目集规范族如下: \n", this.closureC);

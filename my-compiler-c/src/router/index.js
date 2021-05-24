@@ -122,16 +122,16 @@ const routes = [
       //   },
       //   component: () => import("../views/page/RecursiveDescent.vue"),
       // },
-      {
-        path: 'LR1',
-        name: "LR1",
-        meta: {
-          title: 'LR1分析法',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/LR1_END.vue"),
-      },
+      // {
+      //   path: 'LR1',
+      //   name: "LR1",
+      //   meta: {
+      //     title: 'LR1分析法',
+      //     icon: 'edit',
+      //     hidden: false,
+      //   },
+      //   component: () => import("../views/page/LR1_END.vue"),
+      // },
     ],
   },
   {
