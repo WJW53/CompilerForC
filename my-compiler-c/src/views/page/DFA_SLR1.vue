@@ -86,17 +86,14 @@ export default {
       this.initPrint();
       this.getAllFirst(); //得到所有First集
       this.getAllFollow();
-      console.log(this.followData.Expression);
-      console.log(this.followData.StartProgram);
       this.checkFirstSymbols();
       this.constructDfaToIdentifyViablePrefix();
-
       let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
       for (let arr of this.ixList) {
         str = str + arr.join("\t") + "\n";
       }
       this.$store.state.compilation.previewData = str;
-      // console.log(this.ixList);
+      console.log("状态转换表: ", this.ixList);
       this.getSLR1AnalsisTable();
       console.log("action表: ", this.actionTable);
       console.log("goto表: ", this.gotoTable);
@@ -117,7 +114,7 @@ export default {
       this.LRTable.push({
         key: OrderNumber,
         OrderNumber,
-        StateStack: StateStack.join(" "),
+        StateStack: StateStack.join(","),
         SymbolsStack: SymbolsStack.join(" "),
         Production,
         InputString: InputString.join(" "),
@@ -135,44 +132,17 @@ export default {
         Production = "";
         Instruction = "当前输入符号为: " + a + "  \n"; //每次先将产生式和说明重新初始化
         if (flag !== undefined) {
-          if (typeof flag === "string") {
+          console.log(flag);
+          if (flag.lenth === 1) {
+            let state = flag[0];
             //即flag类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
-            Instruction += "进行移进动作: " + flag + "和" + a + "分别入栈;";
+            Instruction += "进行移进动作: " + state + "和" + a + "分别入栈;";
             SymbolsStack.push(a);
             StateStack.push(flag);
             Instruction += "\n面临输入符号: " + InputString[0];
           } else {
-            let realFlag = flag;
-            // let realFlag = null;
-            //flag为数组,[产生式,产生式右部的长度]
-            // if (Array.isArray(flag[0])) {
-            //   let isTrue = fasle;
-            //   for (let j = 0; j < flag.length; j++) {
-            //     let arr = flag[j];
-            //     //直接比最前面那个是否相同即可
-            //     let len1 = arr.length,
-            //       len2 = SymbolsStack.length;
-            //     for (let i = 0; i < len1; i++) {
-            //       if (
-            //         i === len1 - 1 &&
-            //         arr[i] === SymbolsStack[len2 - len1 + i]
-            //       ) {
-            //         isTrue = true;
-            //       }
-            //     }
-            //     if (isTrue) {
-            //       realFlag = arr;
-            //       break;
-            //     }
-            //   }
-            //   if (isTrue === false) {
-            //     console.log("怎么可能,那说明有地方搞错了!!");
-            //   }
-            // } else {
-            //   realFlag = flag;
-            // }
-            let len = realFlag[1],
-              production = realFlag[0];
+            let len = flag[1],
+              production = flag[0];
             Production = production.slice(0, production.length - 1); //去掉`
             while (len--) {
               let si = StateStack.pop();
@@ -198,17 +168,17 @@ export default {
             //   A + "的Follow集合为: " + this.followData[A]
             // );
             Instruction +=
-              "进行规约动作: " +
+              "进行规约动作:状态 " +
               nextState +
-              "和" +
+              "和符号 " +
               A +
               "分别入栈;\n即将面临符号仍为: " +
               a;
           }
+          //然后push这个七元式,再更新数据
           let stateString = StateStack.join(","),
             symbolsString = SymbolsStack.join(" "),
             inputString = InputString.join(" ");
-          //然后push这个七元式,再更新数据
           this.LRTable.push({
             key: OrderNumber,
             OrderNumber,
@@ -222,25 +192,28 @@ export default {
             a = InputString.shift(); //移进动作时输入符号才后移一位
           }
           //此处的actionTable里若报错,说明是stateTop为undefined,也就是上面规约操作从goto表中
-          //得到的状态为undefined!!
+          //得到的状态为undefined!!一般是规约长度不对,比如对应的产生式不应是当前这个,故退栈个数不同,导致最终找不到状态.
           stateTop = StateStack[StateStack.length - 1];
+          console.log(
+            StateStack.length - 1,
+            "状态 " + stateTop,
+            "面临" + a,
+            this.actionTable[stateTop]
+          );
           flag = this.actionTable[stateTop][a];
-          // console.log(
-          //   StateStack.length - 1,
-          //   stateTop,
-          //   a,
-          //   this.actionTable[stateTop]
-          // );
         } else {
           //找不到就报错
           console.log("Error");
+          let stateString = StateStack.join(","),
+            symbolsString = SymbolsStack.join(" "),
+            inputString = InputString.join(" ");
           this.LRTable.push({
             key: OrderNumber,
             OrderNumber,
-            StateStack: StateStack.join(","),
-            SymbolsStack: SymbolsStack.join(" "),
+            StateStack: stateString,
+            SymbolsStack: symbolsString,
             Production,
-            InputString: InputString.join(" "),
+            InputString: inputString,
             Instruction: "当前输入符号为: " + a + "  \n" + "此处有语法错误!!",
           });
           break;
@@ -259,6 +232,7 @@ export default {
             Instruction: "恭喜您!!源程序无语法错误!!LR分析成功",
           });
           console.log("LR分析成功!!");
+          break;
         }
       }
     },
@@ -321,9 +295,7 @@ export default {
                   // } else {
                   //   this.actionTable[stateI]["$"].push([str, arr.length - 1]);
                   // }
-                  if (this.actionTable[stateI]["$"] === undefined) {
-                    this.actionTable[stateI]["$"] = [str, arr.length - 1];
-                  }
+                  this.actionTable[stateI]["$"] = [str, arr.length - 1];
                 }
               }
             }
@@ -633,14 +605,6 @@ export default {
       this.followData[A] = this.getUniqueArr(this.followData[A]);
       // console.log(this.followData[A]);
     },
-    //数组去重
-    getUniqueArr(arr) {
-      return Array.from(new Set(arr));
-    },
-    //得到非ε元素
-    getNoεOfArr(arr) {
-      return arr.filter((item) => item !== "ε");
-    },
     //leftName为产生式左部是一个非终结符,stateI是当前状态的编号
     getSonClosure(leftName, stateI) {
       // console.log(leftName);
@@ -712,16 +676,16 @@ export default {
             //但是这里要做个特殊处理就是B可以推出空的时候,就要吧A->αB`β也加入这个闭包I中
             //但是为了action表里那个length是正常的,所以要进行的是用`替换B,
             //即将A->α`β加入该状态中,这个小细节隐藏的很深啊..我找了一俩小时的bug
-            if (this.isACanToEmpty(nonTm)) {
-              let tempK = [];
-              for (let ele of item) {
-                if (ele !== nonTm) {
-                  tempK.push(ele);
-                }
-              }
-              // [tempK[idx], tempK[idx + 1]] = [tempK[idx + 1], tempK[idx]];
-              this.closureC[index][key].push([...tempK]);
-            }
+            // if (this.isACanToEmpty(nonTm)) {
+            //   let tempK = [];
+            //   for (let ele of item) {
+            //     if (ele !== nonTm) {
+            //       tempK.push(ele);
+            //     }
+            //   }
+            //   // [tempK[idx], tempK[idx + 1]] = [tempK[idx + 1], tempK[idx]];
+            //   this.closureC[index][key].push([...tempK]);
+            // }
             //3.更新Statei,从里面继续重复执行上述两步,直到没有更多的项目能加入Closure(I)中
             this.getSonClosure(nonTm, index); //但是它不能继续找它本身了!!
           }
@@ -759,22 +723,60 @@ export default {
       for (let stateI in C) {
         let state = C[stateI];
         for (let k in state) {
-          if (arr.includes(k)) {
-            console.log(stateI, k);
-            let S1;
-            if (this.goIXTable[stateI] !== undefined) {
-              S1 = this.goIXTable[stateI][k]; //吃了k到达的状态
-            }
-            if (S1 !== undefined) {
-              //再找到S1所能到达的所有状态
-              for (let key2 in S1) {
-                let Sj;
-                if (this.goIXTable[S1] !== undefined) {
-                  Sj = this.goIXTable[S1][key2];
+          for (let arr1d of state[k]) {
+            //arr1d就是每条产生式
+            let idx = arr1d.indexOf("`");
+            let nonTm = arr1d[idx + 1];
+            let preX = arr1d[idx - 1];
+            if (this.nonTerminal.includes(nonTm) && arr.includes(nonTm)) {
+              let tempK = [];
+              for (let ele of arr1d) {
+                if (ele !== nonTm) {
+                  tempK.push(ele);
                 }
-                //令原状态吃key2到Sj
-                if (Sj !== undefined) {
-                  this.goIXTable[stateI][key2] = Sj;
+              }
+              //应该要做β连续可推出空时候的处理..
+              //让前一个状态,指向当前状态的下一个状态(先加入tempK)
+              if (preX !== undefined) {
+                //GO(S1,preX)==S2(也就是当前的stateI);S2--nonTM-->S3
+                //所以我们先得找到这个S1然后,当S1吃了preX之后我们加一条弧让它指向S3,再将tempK加入S3中k里,成为一条产生式
+                //注意:变更为嵌套数组存弧,因为可能不止一条,
+                for (let S1 in C) {
+                  if (this.goIXTable[S1] !== undefined && S1 !== stateI) {
+                    let arr = this.goIXTable[S1][preX];
+                    // console.log(arr);
+                    if (arr !== undefined) {
+                      for (let itemState of arr) {
+                        if (itemState === stateI) {
+                          let S3Arr = this.goIXTable[stateI][nonTm];
+                          // console.log(S3Arr);
+                          for (let S3 of S3Arr) {
+                            let tempArr2d = this.closureC[S3][k]; //也就是S3中需要含有k->preX nonTm ` β 我们要找到这个S3
+                            if (tempArr2d !== undefined) {
+                              for (let a1 of tempArr2d) {
+                                if (
+                                  a1.indexOf("`") === idx + 1 &&
+                                  a1[idx] === nonTm &&
+                                  a1[idx - 1] === preX
+                                ) {
+                                  //也就是说,找到了这个S3了
+                                  this.closureC[S3][k].push(tempK);
+                                  this.goIXTable[S1][preX].push(S3);
+                                  this.ixList.push([S1, preX, S3]);
+                                  break;
+                                }
+                              }
+                            }
+                          }
+                        }
+                        //这是原先goIXTable的终点值为字符串,也就是"StateI"时的写法,但现在变为数组了,不能这么写了
+                        // this.closureC[S3][k].push(tempK);
+                        // this.goIXTable[S1][preX] = [...arr, S3];
+                        // console.log(S1, preX, S3);
+                        // this.ixList.push([S1, preX, S3]);
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -872,14 +874,17 @@ export default {
       if (this.goIXTable[stateI] === undefined) {
         this.$set(this.goIXTable, stateI, {}); //只有第一次才初始化呀
       }
+      if (this.goIXTable[stateI][X] === undefined) {
+        this.goIXTable[stateI][X] = [];
+      }
       //添加弧线,stateI本身就是传进来的状态
       if (notBelong !== true) {
         delete this.closureC["State" + this.stateCnt];
         --this.stateCnt; //别忘了再减去一
-        this.goIXTable[stateI][X] = existStateI; //指向已经存在的StateI
+        this.goIXTable[stateI][X].push(existStateI); //指向已经存在的StateI
         this.ixList.push([stateI, X, existStateI]);
       } else {
-        this.goIXTable[stateI][X] = "State" + this.stateCnt; //指向最新的状态I
+        this.goIXTable[stateI][X].push("State" + this.stateCnt); //指向最新的状态I
         this.ixList.push([stateI, X, "State" + this.stateCnt]);
       }
 
@@ -994,7 +999,7 @@ export default {
         }
         len2 = this.stateCnt;
       } while (len1 < len2); // || this.visitedState.length < this.stateCnt + 1
-      // this.go_i_empty();
+      this.go_i_empty();
       console.log("总共" + this.stateCnt + "个状态(项目集)");
       console.log("识别活前缀的DFA的状态转换表如下: \n", this.goIXTable);
       console.log("LR(0)的项目集规范族如下: \n", this.closureC);
@@ -1009,6 +1014,14 @@ export default {
         this.conflictMap
       );
       this.isCanSLR1(); //SLR1能否解决所有冲突
+    },
+    //数组去重
+    getUniqueArr(arr) {
+      return Array.from(new Set(arr));
+    },
+    //得到非ε元素
+    getNoεOfArr(arr) {
+      return arr.filter((item) => item !== "ε");
     },
   },
 };

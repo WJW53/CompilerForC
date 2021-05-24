@@ -134,28 +134,28 @@ const routes = [
       // },
     ],
   },
-  {
-    path: '/SemanticAnalysis',
-    name: 'SemanticAnalysis',
-    component: Home,
-    meta: {
-      title: "语义分析",
-      icon: 'unordered-list',
-      hidden: false,
-    },
-    children: [
-      {
-        path: 'index',
-        name: "index",
-        meta: {
-          title: '语义检查',
-          icon: 'edit',
-          hidden: false,
-        },
-        component: () => import("../views/page/SemanticAnalysis.vue"),
-      },
-    ],
-  },
+  // {
+  //   path: '/SemanticAnalysis',
+  //   name: 'SemanticAnalysis',
+  //   component: Home,
+  //   meta: {
+  //     title: "语义分析",
+  //     icon: 'unordered-list',
+  //     hidden: false,
+  //   },
+  //   children: [
+  //     {
+  //       path: 'index',
+  //       name: "index",
+  //       meta: {
+  //         title: '语义检查',
+  //         icon: 'edit',
+  //         hidden: false,
+  //       },
+  //       component: () => import("../views/page/SemanticAnalysis.vue"),
+  //     },
+  //   ],
+  // },
   {
     path: '/IntermediateCode',
     name: 'IntermediateCode',
