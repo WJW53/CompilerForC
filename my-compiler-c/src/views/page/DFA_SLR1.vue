@@ -100,6 +100,9 @@ export default {
       this.startExecutiveProgram();
     },
     //LR分析的总控程序
+    //只有goto表中才有吃一个符号对应多个弧即走向多个状态,此时为[s1,s2,,,],但多数仍为[s1](也就是只有一个长度)
+    //多个状态的时候,就需要严格判断当前可规约最长的符合哪个状态,符合哪个就goto到哪个
+    //而action表中除了[s1],就是[production,length]只有这两种形式 故,我可以做个格式控制,导致流程不同.注意噢要精准!!
     startExecutiveProgram() {
       let inputArr = this.tokenToGram.slice(0);
       inputArr.push("$"); //注意push方法返回的是数组长度!!
@@ -133,14 +136,16 @@ export default {
         Instruction = "当前输入符号为: " + a + "  \n"; //每次先将产生式和说明重新初始化
         if (flag !== undefined) {
           console.log(flag);
+          let state = null;
           if (flag.lenth === 1) {
-            let state = flag[0];
-            //即flag类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
+            state = flag[0];
+            //即state类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
             Instruction += "进行移进动作: " + state + "和" + a + "分别入栈;";
             SymbolsStack.push(a);
             StateStack.push(flag);
             Instruction += "\n面临输入符号: " + InputString[0];
           } else {
+            console.log(flag);
             let len = flag[1],
               production = flag[0];
             Production = production.slice(0, production.length - 1); //去掉`
@@ -188,7 +193,7 @@ export default {
             InputString: inputString,
             Instruction,
           });
-          if (typeof flag === "string") {
+          if (typeof state === "string") {
             a = InputString.shift(); //移进动作时输入符号才后移一位
           }
           //此处的actionTable里若报错,说明是stateTop为undefined,也就是上面规约操作从goto表中
