@@ -101,6 +101,10 @@ export default {
       this.$store.state.compilation.purifyTextData = this.purifyTextData;
       // console.log(this.purifyTextData);
       this.timer = null;
+      // console.log(this.token.length);
+      if (this.token.length !== 0) {
+        this.tokenToGram = []; //这tmd害得我,因为我有监测嘛,所以搞得tokenToGram double了
+      }
       for (let i = 0; i < this.token.length; i++) {
         this.changeTypeForGram(this.token[i], this.token[i + 1]);
       }
@@ -134,7 +138,10 @@ export default {
           i += 2; //跨过
         }
         // if(!(this.isWs1(txtData[i])))//算了这里还不能去掉这些空白符,因为要计算行列值
-        tempString += txtData[i];
+        if (txtData[i] !== undefined) {
+          tempString += txtData[i];
+        }
+        // console.log(txtData[i]);
       }
       this.newTextData = tempString;
     },
@@ -539,7 +546,12 @@ export default {
         type === "reserveWord" ||
         type === "headFile"
       ) {
-        this.tokenToGram.push(token.TokenName);
+        if (token.TokenName === "int" && nextToken.TokenName === "main") {
+          this.tokenToGram.push("intOfPreMain");
+        } else {
+          this.tokenToGram.push(token.TokenName);
+        }
+        // this.tokenToGram.push(token.TokenName);
       } else if (type === "string") {
         this.tokenToGram.push("String");
       } else if (type === "character") {

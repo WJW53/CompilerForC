@@ -1,10 +1,14 @@
 export default {
     myProduction : `StartProgram::=Program
-Program::=HeadFiles DeclarationStce int main ( ) CompoundStce FunctionBlock
-HeadFiles::=# include HeadFile
-HeadFile::=<stdio.h>@<stdlib.h>@<math.h>@<ctype.h>@<string.h>@<malloc.h>@<signal.h>@<local.h>@<window.h>
+Program::=HeadFiles DeclarationStceAll SpecialInt main ( ) CompoundStce FunctionBlock
+DeclarationStceAll::=ExistDeclarationStce DeclarationStceAll@ε
+HeadFiles::=HeadFile HeadFiles@ε
+HeadFile::=# include HeadFileID
+HeadFileID::=<stdio.h>@<stdlib.h>@<math.h>@<ctype.h>@<string.h>@<malloc.h>@<signal.h>@<local.h>@<window.h>
 Sentence::=DeclarationStce@ExecuteStce
-DeclarationStce::=ValueDeclaration@FunctionDeclaration@ε
+DeclarationStce::=ExistDeclarationStce@ε
+ExistDeclarationStce::=ValueDeclaration@FunctionDeclaration
+SpecialInt::=intOfPreMain@ε
 ValueDeclaration::=ConstDeclaration@VariableDeclaration
 ConstDeclaration::=const IDType ConstDeclarationList
 IDType::=boolean@char@int@float@double
