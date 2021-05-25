@@ -100,7 +100,7 @@ const routes = [
           icon: 'edit',
           hidden: false,
         },
-        component: () => import("../views/page/DFA_SLR1.vue"),
+        component: () => import("../views/page/memory.vue"),
       },
       // {
       //   path: 'LL1',
