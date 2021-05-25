@@ -263,9 +263,9 @@ export default {
         const STATE = this.closureC[stateI];
         for (let key in STATE) {
           let arr2d = STATE[key];
-          if (key === "Program") {
-            console.log(stateI, STATE[key]);
-          }
+          // if (key === "Program") {
+          //   console.log(stateI, STATE[key]);
+          // }
           for (let arr of arr2d) {
             let idx = arr.indexOf("`");
             //首先这里考虑个特殊情况,就是S->X`A,A->`,所以我的状态里也有S->XA`
@@ -314,9 +314,9 @@ export default {
                     //注意这里一定要-1,因为多个`
                     this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
                   }
-                  if (key === "Program") {
-                    console.log(str);
-                  }
+                  // if (key === "Program") {
+                  //   console.log(str);
+                  // }
                   this.actionTable[stateI]["$"] = [str, arr.length - 1];
                 }
               }
@@ -725,7 +725,7 @@ export default {
                   }
                 }
                 if (f === true) {
-                  console.log(this.closureC[index][key], tempK);
+                  // console.log(this.closureC[index][key], tempK);
                   this.closureC[index][key].push([...tempK]);
                 }
               } else {
