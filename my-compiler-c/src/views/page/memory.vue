@@ -110,19 +110,19 @@ export default {
       let cnt = 0,
         tokenData = this.tokenData,
         cacheTree = {};
-      for (let i = 0, len = this.tokenToGram.length; i < len; i++) {
-        let token = tokenData[i],
-          label = this.tokenToGram[i];
-        if (token.TokenName !== label) {
-          //因为我在GetToken中对最初的token流做了一次封装,所以这里需要逆向..
-          cacheTree[label] = new this.makeNode(
-            label,
-            [tokenData[i].TokenName],
-            ++cnt
-          );
-        }
-      }
-
+      // for (let i = 0, len = this.tokenToGram.length; i < len; i++) {
+      //   let token = tokenData[i],
+      //     label = this.tokenToGram[i];
+      //   if (token.TokenName !== label) {
+      //     //因为我在GetToken中对最初的token流做了一次封装,所以这里需要逆向..
+      //     cacheTree[label] = new this.makeNode(
+      //       label,
+      //       [tokenData[i].TokenName],
+      //       ++cnt
+      //     );
+      //   }
+      // }
+      let nodeStack = []; //存储规约后的节点
       let inputArr = this.tokenToGram.slice(0);
       inputArr.push("$"); //注意push方法返回的是数组长度!!
       //每六个变量组合成的一个对象就是LRTable的一条数据.  先初始化一些数据
@@ -161,6 +161,7 @@ export default {
             //即state类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
             Instruction += "进行移进动作: " + state + "和" + a + "分别入栈;";
             SymbolsStack.push(a);
+            nodeStack.push(new this.makeNode(a, undefined, ++cnt)); //移进时,创建新节点并入栈
             StateStack.push(state);
             Instruction += "\n面临输入符号: " + InputString[0];
           } else {
@@ -168,9 +169,11 @@ export default {
             let len = flag[1],
               production = flag[0];
             Production = production.slice(0, production.length - 2); //去掉空格和`
+            let childrenNodes = []; //装着当前这层即将要规约的节点
             while (len--) {
               let si = StateStack.pop();
               let ai = SymbolsStack.pop();
+              childrenNodes.push(nodeStack.pop()); //出栈并加入children中
               Instruction = Instruction + si + "和" + ai + "分别退栈;";
             }
             let productArr = production.split("->");
@@ -199,17 +202,7 @@ export default {
               "分别入栈;\n即将面临符号仍为: " +
               a;
             ////逆向构造AST
-            let children = [];
-            for (let name of right) {
-              if (cacheTree[name] !== undefined) {
-                children.push(cacheTree[name]);
-                delete cacheTree[name]; //一定刚要记得删除
-              } else {
-                children.push(new this.makeNode(name, undefined, ++cnt));
-              }
-            }
-            //不行不行,不能直接这么写,应该有bug,因为可能有些A一样,但是实际子树不一样啊我靠..
-            cacheTree[A] = new this.makeNode(A, children, ++cnt);
+            nodeStack.push(new this.makeNode(A, childrenNodes.reverse(), ++cnt)); //再将父节点加入栈中
           }
           if (state !== null) {
             a = InputString.shift(); //移进动作时输入符号才后移一位
@@ -260,22 +253,23 @@ export default {
           });
           break;
         }
-        if (flag === "accept") {
-          ++OrderNumber;
-          StateStack.pop();
-          SymbolsStack.push("$");
-          this.LRTable.push({
-            key: OrderNumber,
-            OrderNumber,
-            StateStack: StateStack.join(","),
-            SymbolsStack: SymbolsStack.join(" "),
-            Production: "",
-            InputString: InputString.join(" "),
-            Instruction: "恭喜您!!源程序无语法错误!!LR分析成功",
-          });
-          console.log("LR分析成功!!");
-          break;
-        }
+      }
+      if (flag === "accept") {
+        ++OrderNumber;
+        StateStack.pop();
+        SymbolsStack.push("$");
+        this.LRTable.push({
+          key: OrderNumber,
+          OrderNumber,
+          StateStack: StateStack.join(","),
+          SymbolsStack: SymbolsStack.join(" "),
+          Production: "",
+          InputString: InputString.join(" "),
+          Instruction: "恭喜您!!源程序无语法错误!!LR分析成功",
+        });
+        console.log("LR分析成功!!");
+        console.log(nodeStack);//里面只有根节点并且label为Program就对了,你也可以在详细看看Children
+        this.$store.state.compilation.AST = nodeStack;
       }
     },
     //构造SLR1分析表

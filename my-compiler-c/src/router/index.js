@@ -102,6 +102,16 @@ const routes = [
         },
         component: () => import("../views/page/memory.vue"),
       },
+      {
+        path: 'ShowAST',
+        name: 'ShowAST',
+        meta: {
+          title: 'ShowAST',
+          icon: 'edit',
+          hidden: false,
+        },
+        component: () => import("../views/page/ShowAST.vue"),
+      },
       // {
       //   path: 'LL1',
       //   name: "LL1",

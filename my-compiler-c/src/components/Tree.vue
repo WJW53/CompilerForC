@@ -2,7 +2,7 @@
   <ul class="tree">
     <li
       v-for="(node, index) in data"
-      :key="node[defaultProps.label]"
+      :key="node[defaultProps.number]"
       class="tree-node"
     >
       <i
@@ -41,6 +41,7 @@ export default {
       default: () => ({
         label: "label",
         children: "children",
+        number: "number",
       }),
     },
   },
@@ -59,8 +60,10 @@ export default {
 </script>
 
 <style scoped>
-@import "./assets/font.css";
-
+@import "../assets/css/font.css";
+.tree{
+  margin-left: 10px;
+}
 li {
   list-style: none;
 }
@@ -70,15 +73,15 @@ li {
 }
 
 .tree-node .iconfont {
-  color: #c0c4cc;
+  color: #008c8c;
   font-size: 12px;
   margin-right: 5px;
   vertical-align: middle;
 }
 
 .tree-node .node-label {
-  font-size: 14px;
-  color: #606266;
+  font-size: 16px;
+  color: #4e6ef2;
   vertical-align: middle;
 }
 </style>
