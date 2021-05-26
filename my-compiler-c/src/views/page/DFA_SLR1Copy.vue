@@ -11,6 +11,7 @@
 </template>
 
 <script>
+import { makeNode } from "@/storage/Tree.js";
 const columnHead = [
   {
     title: "OrderNumber",
@@ -53,6 +54,7 @@ export default {
       gotoTable: {},
       canToEmpty: {},
       LRTable: [], //[{里面有6+1个属性,对应表的列头名}]
+      tokenData: this.$store.state.compilation.tokenData,
       allSymbols: this.$store.state.compilation.allSymbols,
       tokenToGram: this.$store.state.compilation.tokenToGram,
       firstData: this.$store.state.compilation.firstData,
@@ -80,6 +82,7 @@ export default {
     this.startGrammarAnalysis();
   },
   methods: {
+    makeNode,
     //语法分析开关
     startGrammarAnalysis() {
       // console.log(this.isACanToEmpty("DeclarationStce"));
@@ -100,11 +103,14 @@ export default {
       this.startExecutiveProgram();
     },
     //LR分析的总控程序
-    //而action表中除了[s1],就是[production,length],还有[s1,s2,..](比如State116)故,我得做个格式控制,导致流程不同.注意要精准!!
-    //所以在最开始将goto表中的[s1,s2,leftName]换种方式,那么action表中也就不会是那个样子了
-    //goto表中也有吃一个符号对应多个弧即走向多个状态,此时为[s1,s2,,,],但多数仍为[s1](也就是只有一个长度)
+    //只有goto表中才有吃一个符号对应多个弧即走向多个状态,此时为[s1,s2,,,],但多数仍为[s1](也就是只有一个长度)
     //多个状态的时候,就需要严格判断当前可规约最长的符合哪个状态,符合哪个就goto到哪个
+    //而action表中除了[s1],就是[production,length]只有这两种形式 故,我可以做个格式控制,导致流程不同.注意噢要精准!!
     startExecutiveProgram() {
+      let cnt = 0,
+        tokenData = this.tokenData,
+        cacheShift = [];
+      let nodeStack = []; //存储规约后的节点
       let inputArr = this.tokenToGram.slice(0);
       inputArr.push("$"); //注意push方法返回的是数组长度!!
       //每六个变量组合成的一个对象就是LRTable的一条数据.  先初始化一些数据
@@ -115,265 +121,163 @@ export default {
         InputString = inputArr,
         Instruction = "State0和$分别入栈;";
       //但是状态栈和符号栈最后是字符串格式,要记得到时候.join(" ");
-      this.pushToLRTable(
+      this.LRTable.push({
+        key: OrderNumber,
         OrderNumber,
-        OrderNumber,
-        StateStack.join(","),
-        SymbolsStack.join(" "),
+        StateStack: StateStack.join(","),
+        SymbolsStack: SymbolsStack.join(" "),
         Production,
-        InputString.join(" "),
-        Instruction + "面临输入符号为: " + InputString[0]
-      ); //先将初始状态入栈
+        InputString: InputString.join(" "),
+        Instruction: Instruction + "面临输入符号为: " + InputString[0],
+      }); //先将初始状态入栈
 
       let a = InputString.shift(); //首位,注意InputString本身是数组形式
       let stateTop = StateStack[StateStack.length - 1],
         flag = this.actionTable[stateTop][a];
       //accept是分析成功,undefined是源程序中有错误,需要调用对应的错误处理程序
+      // console.log(this.actionTable);
       // console.log(flag);
-      while (flag !== undefined) {
+      while (flag !== "accept") {
         ++OrderNumber;
         Production = "";
         Instruction = "当前输入符号为: " + a + "  \n"; //每次先将产生式和说明重新初始化
-        let state, reduceArr, stateArr;
-        if (flag.length === 1) {
-          state = flag[0]; //就一个状态,等着移进吧
-        } else {
-          if (flag.length === 2 && typeof flag[1] === "number") {
-            reduceArr = flag; //[production,length],规约的
-          }
-        }
-        if (state !== undefined) {
-          if (state === "accept") {
-            StateStack.pop();
-            SymbolsStack.push("$");
-            this.pushToLRTable(
-              OrderNumber,
-              OrderNumber,
-              StateStack.join(","),
-              SymbolsStack.join(" "),
-              "",
-              InputString.join(" "),
-              "恭喜您!!源程序无语法错误!!LR分析成功"
-            );
-            console.log("LR分析成功!!");
-            break;
-          } else {
+        if (flag !== undefined) {
+          // console.log(flag);
+          let state = null; //string类型为移进,数组类型为规约
+          if (typeof flag === "string") {
+            state = flag;
             //即state类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
             Instruction += "进行移进动作: " + state + "和" + a + "分别入栈;";
             SymbolsStack.push(a);
+            let node = new this.makeNode(a, undefined, ++cnt);
+            nodeStack.push(node); //移进时,创建新节点并入栈
+            cacheShift.push(node); //将所有叶子节点加进来,它天然就是有序的,因为我要干一件事儿
             StateStack.push(state);
             Instruction += "\n面临输入符号: " + InputString[0];
-          }
-        } else if (reduceArr !== undefined) {
-          console.log(reduceArr);
-          let production = reduceArr[0],
-            len = reduceArr[1];
-          Production = production.slice(0, production.length - 1); //去掉`
-          while (len--) {
-            let si = StateStack.pop();
-            let ai = SymbolsStack.pop();
-            Instruction = Instruction + si + "和" + ai + "分别退栈;";
-          }
-          let productArr = production.split("->");
-          let A = productArr[0],
-            right = productArr[1].split(" ");
-          // console.log(Production,len,right);
-          let topPointer = StateStack.length - 1; //准备规约
-          SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
-          // console.log(
-          //   "规约:",
-          //   StateStack[topPointer],
-          //   this.gotoTable[StateStack[topPointer]],
-          //   A
-          // );
-          let nextState;
-          let nextStateArr = this.gotoTable[StateStack[topPointer]][A];
-          let leng = nextStateArr.length;
-          if (leng === 1) {
-            console.log(nextStateArr, "lengt===1");
-            nextState = nextStateArr[0];
-          } else if (leng > 2) {
-            //nextStateArr: [S1待约状态,S2规约状态,leftName]
-            let leftName = nextStateArr[leng - 1];
-            console.log(nextStateArr, "lengt>2", "leftName为:" + leftName);
-            //如果下一个输入符号属于leftName的follow集,则直接取可规约的状态进行规约,否则就用
-            let nextA = InputString[0];
-            console.log("InputString[0]为: " + nextA, "当前输入符号为:" + a);
-            if (this.followData[leftName].includes(a)) {
-              //应该是用a吧,如果错了我就换成nextA
-              console.log(a+"在"+leftName+"的follow集合里");
-              nextState = nextStateArr[1]; //因为这种因为空而导致的产生式我是后来才加入的,所以一定在索引1这个位置
-            } else {
-              nextState = nextStateArr[0];
+          } else {
+            // console.log(flag);
+            let len = flag[1],
+              production = flag[0];
+            Production = production.slice(0, production.length - 2); //去掉空格和`
+            let childrenNodes = []; //装着当前这层即将要规约的节点
+            while (len--) {
+              let si = StateStack.pop();
+              let ai = SymbolsStack.pop();
+              childrenNodes.push(nodeStack.pop()); //出栈并加入children中
+              Instruction = Instruction + si + "和" + ai + "分别退栈;";
             }
+            let productArr = production.split("->");
+            let A = productArr[0],
+              right = productArr[1].split(" "); //每个元素就是节点的label
+            // console.log(Production,len,right);
+            let topPointer = StateStack.length - 1; //准备规约
+            SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
+            // console.log(
+            //   "规约:",
+            //   StateStack[topPointer],
+            //   this.gotoTable[StateStack[topPointer]],
+            //   A
+            // );
+            let nextState = this.gotoTable[StateStack[topPointer]][A];
+            StateStack.push(nextState); //注意规约动作并不改变当前输入符号
+            // console.log(
+            //   "NextState: " + nextState,
+            //   A + "的Follow集合为: " + this.followData[A]
+            // );
+            Instruction +=
+              "进行规约动作:状态 " +
+              nextState +
+              "和符号 " +
+              A +
+              "分别入栈;\n即将面临符号仍为: " +
+              a;
+            ////逆向构造AST
+            nodeStack.push(
+              new this.makeNode(A, childrenNodes.reverse(), ++cnt)
+            ); //再将父节点加入栈中
           }
-          StateStack.push(nextState); //注意规约动作并不改变当前输入符号
-          // console.log(
-          //   "NextState: " + nextState,
-          //   A + "的Follow集合为: " + this.followData[A]
-          // );
-          Instruction +=
-            "进行规约动作:状态 " +
-            nextState +
-            "和符号 " +
-            A +
-            "分别入栈;\n即将面临符号仍为: " +
-            a;
-        }
-        //然后push这个七元式,再更新数据
-        let stateString = StateStack.join(","),
-          symbolsString = SymbolsStack.join(" "),
-          inputString = InputString.join(" ");
-        this.pushToLRTable(
-          OrderNumber,
-          OrderNumber,
-          stateString,
-          symbolsString,
-          Production,
-          inputString,
-          Instruction
-        );
-        if (state !== undefined) {
-          a = InputString.shift(); //移进动作时输入符号才后移一位
-        }
-        //此处的actionTable里若报错,说明是stateTop为undefined,也就是上面规约操作从goto表中
-        //得到的状态为undefined!!一般是规约长度不对,比如对应的产生式不应是当前这个,故退栈个数不同,导致最终找不到状态.
-        stateTop = StateStack[StateStack.length - 1];
-        console.log(
-          StateStack.length - 1,
-          "状态 " + stateTop,
-          "面临" + a,
-          this.actionTable[stateTop]
-        );
-        flag = this.actionTable[stateTop][a];
-      }
-      if (flag === undefined) {
-        console.log("Error"); //控制台打印一下
-        ++OrderNumber;
-        let stateString = StateStack.join(","),
-          symbolsString = SymbolsStack.join(" "),
-          inputString = InputString.join(" ");
-        this.pushToLRTable(
-          OrderNumber,
-          OrderNumber,
-          stateString,
-          symbolsString,
-          Production,
-          inputString,
-          "当前输入符号为: " + a + "  \n" + "此处有语法错误!!"
-        );
-      }
+          if (state !== null) {
+            a = InputString.shift(); //移进动作时输入符号才后移一位
+            // console.log(a, InputString.length);
+          }
+          //此处的actionTable里若报错,说明是stateTop为undefined,也就是上面规约操作从goto表中
+          //得到的状态为undefined!!一般是规约长度不对,比如对应的产生式不应是当前这个,故退栈个数不同,导致最终找不到状态.
+          stateTop = StateStack[StateStack.length - 1];
 
-      // while (flag !== "accept") {
-      //   ++OrderNumber;
-      //   Production = "";
-      //   Instruction = "当前输入符号为: " + a + "  \n"; //每次先将产生式和说明重新初始化
-      //   if (flag !== undefined) {
-      //     console.log(flag);
-      //     let state = null;
-      //     if (flag.lenth === 1) {
-      //       state = flag[0];
-      //       //即state类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
-      //       Instruction += "进行移进动作: " + state + "和" + a + "分别入栈;";
-      //       SymbolsStack.push(a);
-      //       StateStack.push(flag);
-      //       Instruction += "\n面临输入符号: " + InputString[0];
-      //     } else {
-      //       console.log(flag);
-      //       let len = flag[1],
-      //         production = flag[0];
-      //       Production = production.slice(0, production.length - 1); //去掉`
-      //       while (len--) {
-      //         let si = StateStack.pop();
-      //         let ai = SymbolsStack.pop();
-      //         Instruction = Instruction + si + "和" + ai + "分别退栈;";
-      //       }
-      //       let productArr = production.split("->");
-      //       let A = productArr[0],
-      //         right = productArr[1].split(" ");
-      //       // console.log(Production,len,right);
-      //       let topPointer = StateStack.length - 1; //准备规约
-      //       SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
-      //       // console.log(
-      //       //   "规约:",
-      //       //   StateStack[topPointer],
-      //       //   this.gotoTable[StateStack[topPointer]],
-      //       //   A
-      //       // );
-      //       let nextState = this.gotoTable[StateStack[topPointer]][A];
-      //       StateStack.push(nextState); //注意规约动作并不改变当前输入符号
-      //       // console.log(
-      //       //   "NextState: " + nextState,
-      //       //   A + "的Follow集合为: " + this.followData[A]
-      //       // );
-      //       Instruction +=
-      //         "进行规约动作:状态 " +
-      //         nextState +
-      //         "和符号 " +
-      //         A +
-      //         "分别入栈;\n即将面临符号仍为: " +
-      //         a;
-      //     }
-      //     //然后push这个七元式,再更新数据
-      //     let stateString = StateStack.join(","),
-      //       symbolsString = SymbolsStack.join(" "),
-      //       inputString = InputString.join(" ");
-      //     this.LRTable.push({
-      //       key: OrderNumber,
-      //       OrderNumber,
-      //       StateStack: stateString,
-      //       SymbolsStack: symbolsString,
-      //       Production,
-      //       InputString: inputString,
-      //       Instruction,
-      //     });
-      //     if (typeof state === "string") {
-      //       a = InputString.shift(); //移进动作时输入符号才后移一位
-      //     }
-      //     //此处的actionTable里若报错,说明是stateTop为undefined,也就是上面规约操作从goto表中
-      //     //得到的状态为undefined!!一般是规约长度不对,比如对应的产生式不应是当前这个,故退栈个数不同,导致最终找不到状态.
-      //     stateTop = StateStack[StateStack.length - 1];
-      //     console.log(
-      //       StateStack.length - 1,
-      //       "状态 " + stateTop,
-      //       "面临" + a,
-      //       this.actionTable[stateTop]
-      //     );
-      //     flag = this.actionTable[stateTop][a];
-      //   } else {
-      //     //找不到就报错
-      //     console.log("Error");
-      //     let stateString = StateStack.join(","),
-      //       symbolsString = SymbolsStack.join(" "),
-      //       inputString = InputString.join(" ");
-      //     this.LRTable.push({
-      //       key: OrderNumber,
-      //       OrderNumber,
-      //       StateStack: stateString,
-      //       SymbolsStack: symbolsString,
-      //       Production,
-      //       InputString: inputString,
-      //       Instruction: "当前输入符号为: " + a + "  \n" + "此处有语法错误!!",
-      //     });
-      //     break;
-      //   }
-      //   if (flag === "accept") {
-      //     ++OrderNumber;
-      //     StateStack.pop();
-      //     SymbolsStack.push("$");
-      //     this.LRTable.push({
-      //       key: OrderNumber,
-      //       OrderNumber,
-      //       StateStack: StateStack.join(","),
-      //       SymbolsStack: SymbolsStack.join(" "),
-      //       Production: "",
-      //       InputString: InputString.join(" "),
-      //       Instruction: "恭喜您!!源程序无语法错误!!LR分析成功",
-      //     });
-      //     console.log("LR分析成功!!");
-      //     break;
-      //   }
-      // }
+          // console.log(
+          //   StateStack.length - 1,
+          //   "状态 " + stateTop,
+          //   "面临" + a,
+          //   this.actionTable[stateTop]
+          // );
+
+          // if (this.actionTable[stateTop] === undefined) {
+          //   let s = StateStack.pop(); //那就再多退一个
+          //   let symbol = SymbolsStack.pop();
+          //   stateTop = StateStack[StateStack.length - 1];
+          //   Instruction += "; " + s + "和" + symbol + "也分别退栈";
+          // }
+          //然后push这个七元式,再更新数据
+          this.LRTable.push({
+            key: OrderNumber,
+            OrderNumber,
+            StateStack: StateStack.join(","),
+            SymbolsStack: SymbolsStack.join(" "),
+            Production,
+            InputString: InputString.join(" "),
+            Instruction,
+          });
+          flag = this.actionTable[stateTop][a];
+        } else {
+          //找不到就报错
+          console.log("Error");
+          let stateString = StateStack.join(","),
+            symbolsString = SymbolsStack.join(" "),
+            inputString = InputString.join(" ");
+          this.LRTable.push({
+            key: OrderNumber,
+            OrderNumber,
+            StateStack: stateString,
+            SymbolsStack: symbolsString,
+            Production,
+            InputString: inputString,
+            Instruction: "当前输入符号为: " + a + "  \n" + "此处有语法错误!!",
+          });
+          break;
+        }
+      }
+      if (flag === "accept") {
+        ++OrderNumber;
+        StateStack.pop();
+        SymbolsStack.push("$");
+        this.LRTable.push({
+          key: OrderNumber,
+          OrderNumber,
+          StateStack: StateStack.join(","),
+          SymbolsStack: SymbolsStack.join(" "),
+          Production: "",
+          InputString: InputString.join(" "),
+          Instruction: "恭喜您!!源程序无语法错误!!LR分析成功",
+        });
+        console.log("LR分析成功!!");
+        console.log(cacheShift);
+        //来吧还有件事儿没干呢,就是最底层的源代码有些符号因为我是进行了一次封装的,所以它不是最初的样子了
+        for (let i = 0, len = cacheShift.length; i < len; i++) {
+          let tempNodeName = cacheShift[i].label,
+            tokenName = tokenData[i].TokenName;
+          if (tempNodeName !== tokenName) {
+            //因为我在GetToken中对最初的token流做了一次封装,所以这里需要逆向..
+            let node = new this.makeNode(tokenName, undefined, ++cnt);
+            // if (cacheShift[i].children === undefined) {
+            cacheShift[i].children = [node]; //其实这里直接这样就足够了因为本身就是最底层终结符规约一次
+            // } else {
+            //   cacheShift[i].children.push(node);
+            // }
+          }
+        }
+        console.log(nodeStack); //里面只有根节点并且label为Program就对了,你也可以在详细看看Children
+        this.$store.state.compilation.AST = nodeStack;//OK完美
+      }
     },
     //构造SLR1分析表
     getSLR1AnalsisTable() {
@@ -391,36 +295,49 @@ export default {
         const STATE = this.closureC[stateI];
         for (let key in STATE) {
           let arr2d = STATE[key];
+          // if (key === "Program") {
+          //   console.log(stateI, STATE[key]);
+          // }
           for (let arr of arr2d) {
             let idx = arr.indexOf("`");
             //首先这里考虑个特殊情况,就是S->X`A,A->`,所以我的状态里也有S->XA`
             //故后面这个应该是: 吃了S之后推出的状态与它吃了A之后所goto的状态一致
             if (idx !== arr.length - 1) {
               let X = arr[idx + 1];
-              let stateJ = obj[stateI][X]; //goIXTable,注意: 经后来的修改后,stateJ是个数组,类似["State0"],["State1","State10"]
+              let stateJ = obj[stateI][X]; //goIXTable
               //若项目A->α`Xβ且GO(Ik,X)=Ij
               if (stateJ !== undefined) {
                 // //我这里有写的有问题,这个写不写无所谓,只是确实有一种特殊情况要考虑,我想想要写在哪里放在哪里
-                // // //这是上面说的那种特殊情况,其实就是因为A->`而造成的
+                // // //这是上面说的那种特殊情况,其实就是因为A->`而造成的,只是这段代码没用,是错误的
                 // if (this.canToEmpty[arr[idx - 1]]) {
                 //   // console.log(arr[idx - 1]);
                 //   this.gotoTable[stateI][arr[idx - 1]] =
                 //     obj[stateI][arr[idx - 1]];
                 //   console.log(this.gotoTable[stateI][key]); //这个,..这个bug,太nb了..
                 // }
+                // if (arr[1] === "DeclarationStce") {
+                //   console.log(stateI, STATE);
+                // } //这是当初找bug而打印的
                 if (this.terminal.includes(X)) {
                   //若X为终结符
                   this.actionTable[stateI][X] = stateJ; //obj是goIXTable
-                } else {
+                }
+                if (this.nonTerminal.includes(X)) {
                   this.gotoTable[stateI][X] = stateJ; //这就是后继状态j
                 }
               }
             } else {
               if (idx !== 0) {
+                // if (arr[1] === "DeclarationStce") {
+                //   console.log(stateI, STATE);
+                // } //这是当初找bug而打印的
+                // if (key === "Program") {
+                //   console.log(stateI, STATE[key], arr);
+                // }
                 //A->α`,没有A->`是因为这是不可达状态. key就是A
                 let name = arr[idx - 1];
                 if (name === "Program" && key === "StartProgram") {
-                  this.actionTable[stateI]["$"] = ["accept"]; //接受状态,到底设为$还是accept呢?
+                  this.actionTable[stateI]["$"] = "accept"; //接受状态,到底设为$还是accept呢?
                   console.log("结束状态在: " + stateI);
                 } else {
                   let str = key + "->" + arr.join(" ");
@@ -429,10 +346,8 @@ export default {
                     //注意这里一定要-1,因为多个`
                     this.actionTable[stateI][ele] = [str, arr.length - 1]; //即用A->α规约
                   }
-                  // if (this.actionTable[stateI]["$"] === undefined) {
-                  //   this.actionTable[stateI]["$"] = [[str, arr.length - 1]];
-                  // } else {
-                  //   this.actionTable[stateI]["$"].push([str, arr.length - 1]);
+                  // if (key === "Program") {
+                  //   console.log(str);
                   // }
                   this.actionTable[stateI]["$"] = [str, arr.length - 1];
                 }
@@ -441,26 +356,6 @@ export default {
           }
         }
       }
-    },
-    //将七元组push进入LRTable中
-    pushToLRTable(
-      key,
-      OrderNumber,
-      StateStackString,
-      SymbolsStackString,
-      Production,
-      InputString,
-      Instruction
-    ) {
-      this.LRTable.push({
-        key,
-        OrderNumber,
-        StateStack: StateStackString,
-        SymbolsStack: SymbolsStackString,
-        Production,
-        InputString,
-        Instruction,
-      });
     },
     //打印一些数据
     initPrint() {
@@ -785,7 +680,7 @@ export default {
           } else {
             let addFlag = true;
             for (let tmpItm of tempArr) {
-              if (tmpItm.join("") === similar[m].join("")) {
+              if (tmpItm.join(" ") === similar[m].join(" ")) {
                 //就是说新加进来的,不在该状态里才行
                 addFlag = false;
                 break;
@@ -799,6 +694,9 @@ export default {
             //然后继续重复上面的动作,即,将所有不在ClosureI中的形如HeadFiles->`γ加入ClosureI中
             //遍历headfiles的数组,找到有`γ的子数组,并且不在ClosureI中将其加入,
             this.getSonClosure(sonNonTm, stateI); //所以写成递归了
+          }
+          if (sonNonTm === undefined) {
+            tempArr.push([...similar[m]]);
           }
         }
       }
@@ -821,7 +719,9 @@ export default {
         let temp = this.closureC[index][key]; //二维数组
         for (let i = 0; i < temp.length; i++) {
           let item = temp[i]; //这是每一条产生式
-          // for (let j = 0; j < item.length; j++) {//???这个是干嘛的
+          // for (let j = 0; j < item.length; j++) {
+          //???这个是干嘛的??我tm什么时候给打起注释了,什么时候把这个for搞丢得??必须有这个for
+          //对不起搞错了,这个for的确没用,没用
           let idx = item.indexOf("`"),
             nonTm = item[idx + 1];
           // console.log(nonTm);
@@ -832,18 +732,59 @@ export default {
             nonTm !== undefined
           ) {
             //注意!!!!!找到了A->...`B...,现在要去找B->`γ
-            //但是这里要做个特殊处理就是B可以推出空的时候,就要吧A->αB`β也加入这个闭包I中
+            //但是这里要做个特殊处理就是B可以推出空的时候,就要吧A->α`β也加入这个闭包I中
             //但是为了action表里那个length是正常的,所以要进行的是用`替换B,
             //即将A->α`β加入该状态中,这个小细节隐藏的很深啊..我找了一俩小时的bug
+            //后来发现还得做成β判断每个是否都能有限次推导出空才行,C
+            let cache = [];
+            for (let t = idx + 1, len = item.length; t < len; t++) {
+              if (this.canToEmpty[item[t]] && item[t] !== "ε") {
+                let tempK = [],
+                  sonNonTm = item[t];
+                cache.push(sonNonTm);
+                for (let ele of item) {
+                  if (cache.includes(ele) === false) {
+                    //就是把之前推出空的滤过
+                    tempK.push(ele);
+                  }
+                }
+                let f = true;
+                for (let arr of temp) {
+                  //遍历temp的已有产生式
+                  if (arr.join(" ") === tempK.join(" ")) {
+                    f = false;
+                    break; //就是查重
+                  }
+                }
+                if (f === true) {
+                  // console.log(this.closureC[index][key], tempK);
+                  this.closureC[index][key].push([...tempK]);
+                }
+              } else {
+                break;
+              }
+              // console.log(cache);
+            }
             // if (this.isACanToEmpty(nonTm)) {
             //   let tempK = [];
             //   for (let ele of item) {
             //     if (ele !== nonTm) {
+            //       //就是把之前推出空的滤过
             //       tempK.push(ele);
             //     }
             //   }
-            //   // [tempK[idx], tempK[idx + 1]] = [tempK[idx + 1], tempK[idx]];
-            //   this.closureC[index][key].push([...tempK]);
+            //   let f = true;
+            //   for (let arr of temp) {
+            //     //遍历temp的已有产生式
+            //     if (arr.join(" ") === tempK.join(" ")) {
+            //       f = false;
+            //       break; //就是查重
+            //     }
+            //   }
+            //   if (f === true) {
+            //     console.log(index, this.closureC[index][key], tempK);
+            //     this.closureC[index][key].push([...tempK]);
+            //   }
             // }
             //3.更新Statei,从里面继续重复执行上述两步,直到没有更多的项目能加入Closure(I)中
             this.getSonClosure(nonTm, index); //但是它不能继续找它本身了!!
@@ -869,7 +810,7 @@ export default {
       this.followGramSymbols[stateI] = res;
       // this.$set(this.followGramSymbols, stateI, res);
     },
-    //为了空弧做的特殊处理
+    //不对..
     go_i_empty() {
       let arr = [],
         obj = this.canToEmpty;
@@ -918,20 +859,11 @@ export default {
                                   a1[idx] === nonTm &&
                                   a1[idx - 1] === preX
                                 ) {
-                                  //也就是说,找到了这个S3了,但加不加要看里面是否已经含有了
-                                  let f = true;
-                                  for (let arr of this.closureC[S3][k]) {
-                                    if (arr.join(" ") === tempK.join(" ")) {
-                                      f = false;
-                                      break;
-                                    }
-                                  }
-                                  if (f === true) {
-                                    this.closureC[S3][k].push(tempK);
-                                    this.goIXTable[S1][preX].push(S3, nonTm); //记住是哪个左部,即非终结符
-                                    this.ixList.push([S1, preX, S3]);
-                                    break;
-                                  }
+                                  //也就是说,找到了这个S3了
+                                  this.closureC[S3][k].push(tempK);
+                                  this.goIXTable[S1][preX].push(S3);
+                                  this.ixList.push([S1, preX, S3]);
+                                  break;
                                 }
                               }
                             }
@@ -1006,39 +938,53 @@ export default {
         if (len1 !== len2 || cnt1 !== cnt2) {
           continue;
         }
+        let flag1 = true; //默认该条相同
         for (let newKey2 in newObj) {
-          //遍历最新的状态里的项目,newKey2为S,E这种的左部name
-          if (curObj[newKey2] === undefined) {
-            break; //出现了没有的左部那么直接结束此次循环
-          } else {
-            //遍历比较所有的产生式是否相同,注意二维数组,我不是引用值,所以每次要拍平比较
-            //现在问题的本质就是比较这个二维数组的内容是否相同,顺序可能不一致噢
-            let newArr2D = newObj[newKey2],
-              curArr2D = curObj[newKey2];
-            if (newArr2D.length !== curArr2D.length) {
-              //先保证同一个非终结符的产生式条数一致
+          if (flag1) {
+            //遍历最新的状态里的项目,newKey2为S,E这种的左部name
+            if (curObj[newKey2] === undefined) {
+              flag1 = false; //出现了没有的左部那么直接结束此次循环,但是break无法跳出当前循环啊!!!!
               break;
-            }
-            let tempCache = {}; //直接映射,每个一维数组就是一个属性值
-            for (let itemArr of newArr2D) {
-              tempCache[itemArr] = true;
-            }
-            //只有所有产生式都匹配到了,才算属于,即相同
-            let sameNum = 0;
-            for (let itemArr2 of curArr2D) {
-              if (tempCache[itemArr2] === true) {
-                sameNum++;
-              } else {
+            } else {
+              //遍历比较所有的产生式是否相同,注意二维数组,我不是引用值,所以每次要拍平比较
+              //现在问题的本质就是比较这个二维数组的内容是否相同,顺序可能不一致噢
+              let newArr2D = newObj[newKey2],
+                curArr2D = curObj[newKey2];
+              if (newArr2D.length !== curArr2D.length) {
+                //先保证同一个非终结符的产生式条数一致
+                flag1 = false;
                 break;
               }
-            }
-            if (sameNum === newArr2D.length) {
-              notBelong = false;
-              existStateI = curKey; //记录这个原先的状态I
+              let tempCache = {}; //直接映射,每个一维数组就是一个属性值
+              for (let itemArr of newArr2D) {
+                tempCache[itemArr] = true;
+              }
+              //只有所有产生式都匹配到了,才算属于,即相同
+              let sameNum = 0;
+              for (let itemArr2 of curArr2D) {
+                if (tempCache[itemArr2] === true) {
+                  sameNum++;
+                } else {
+                  flag1 = false; //有一个不同,剩下的就都不用匹配了啊
+                  break;
+                }
+              }
+              if (sameNum === newArr2D.length) {
+                continue; //只是这个左部对应的所有产生式相同而已,还有其他左部还没判断呢,也就是newKey2
+              } else {
+                flag1 = false;
+              }
             }
           }
         }
+        if (flag1 === true) {
+          //比完之后,说明已经存在一个状态是相同的了,不用再比较了
+          existStateI = curKey;
+          notBelong = false; //false代表属于
+          break;
+        }
       }
+      //
       if (this.goIXTable[stateI] === undefined) {
         this.$set(this.goIXTable, stateI, {}); //只有第一次才初始化呀
       }
@@ -1047,12 +993,13 @@ export default {
       }
       //添加弧线,stateI本身就是传进来的状态
       if (notBelong !== true) {
+        // console.log(this.closureC["State" + this.stateCnt]);
         delete this.closureC["State" + this.stateCnt];
         --this.stateCnt; //别忘了再减去一
-        this.goIXTable[stateI][X].push(existStateI); //指向已经存在的StateI
+        this.goIXTable[stateI][X] = existStateI; //指向已经存在的StateI
         this.ixList.push([stateI, X, existStateI]);
       } else {
-        this.goIXTable[stateI][X].push("State" + this.stateCnt); //指向最新的状态I
+        this.goIXTable[stateI][X] = "State" + this.stateCnt; //指向最新的状态I
         this.ixList.push([stateI, X, "State" + this.stateCnt]);
       }
 
@@ -1167,7 +1114,7 @@ export default {
         }
         len2 = this.stateCnt;
       } while (len1 < len2); // || this.visitedState.length < this.stateCnt + 1
-      this.go_i_empty();
+      // this.go_i_empty();
       console.log("总共" + this.stateCnt + "个状态(项目集)");
       console.log("识别活前缀的DFA的状态转换表如下: \n", this.goIXTable);
       console.log("LR(0)的项目集规范族如下: \n", this.closureC);
@@ -1196,4 +1143,4 @@ export default {
 </script>
 
 <style lang="less">
-</style>
+</style

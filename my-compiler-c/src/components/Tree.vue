@@ -62,7 +62,7 @@ export default {
 <style scoped>
 @import "../assets/css/font.css";
 .tree{
-  margin-left: 10px;
+  margin-left: 20px;
 }
 li {
   list-style: none;

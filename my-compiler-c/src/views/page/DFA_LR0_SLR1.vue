@@ -54,9 +54,9 @@ export default {
       gotoTable: {},
       canToEmpty: {},
       LRTable: [], //[{里面有6+1个属性,对应表的列头名}]
-      tokenData: this.$store.state.compilation.tokenData,
+      tokenData: this.$store.state.compilation.tokenData, //[[六元组],]
       allSymbols: this.$store.state.compilation.allSymbols,
-      tokenToGram: this.$store.state.compilation.tokenToGram,
+      tokenToGram: this.$store.state.compilation.tokenToGram, //token经过二次封装后
       firstData: this.$store.state.compilation.firstData,
       followData: this.$store.state.compilation.followData,
       nonTerminal: this.$store.state.compilation.nonTerminal, //非终结符
@@ -75,9 +75,7 @@ export default {
       visitedState: [], //存储做完了闭包和状态转换的状态
     };
   },
-  //裂开裂开,LR0写完可识别活前缀的DFA后,我判断出有冲突,要改用LR1了,往前探索一步应该就够了
-  //但是后来我发现我就四五个状态有移进-规约冲突,且都往前探查一步即可区分,于是针对冲突的状态做处理即可
-  //所以我在LR0基础上增加了SLR1
+  //写好文法,有难度噢...  我是好的文法+LR0项目簇+识别活前缀的DFA+SLR1的做法,或者直接上LR1分析法也行更方便
   created() {
     this.startGrammarAnalysis();
   },
@@ -86,42 +84,27 @@ export default {
     //语法分析开关
     startGrammarAnalysis() {
       // console.log(this.isACanToEmpty("DeclarationStce"));
-      this.initPrint();
+      this.initPrint(); //打印一些信息,并在其中执行isACanToEmpty函数!!
       this.getAllFirst(); //得到所有First集
-      this.getAllFollow();
-      this.checkFirstSymbols();
-      this.constructDfaToIdentifyViablePrefix();
+      this.getAllFollow(); //得到所有的Follow集合
+      this.checkFirstSymbols(); //检查符号个数等是否正确
+      this.constructDfaToIdentifyViablePrefix(); //构造LR0项目簇和识别活前缀的DFA
       let str = "以下是识别活前缀的DFA的状态转换表: \n\n";
       for (let arr of this.ixList) {
         str = str + arr.join("\t") + "\n";
       }
       this.$store.state.compilation.previewData = str;
       console.log("状态转换表: ", this.ixList);
-      this.getSLR1AnalsisTable();
+      this.getSLR1AnalsisTable(); //构造SLR1分析表
       console.log("action表: ", this.actionTable);
       console.log("goto表: ", this.gotoTable);
-      this.startExecutiveProgram();
+      this.startExecutiveProgram(); //开启LR分析总控程序
     },
     //LR分析的总控程序
-    //只有goto表中才有吃一个符号对应多个弧即走向多个状态,此时为[s1,s2,,,],但多数仍为[s1](也就是只有一个长度)
-    //多个状态的时候,就需要严格判断当前可规约最长的符合哪个状态,符合哪个就goto到哪个
-    //而action表中除了[s1],就是[production,length]只有这两种形式 故,我可以做个格式控制,导致流程不同.注意噢要精准!!
     startExecutiveProgram() {
       let cnt = 0,
         tokenData = this.tokenData,
-        cacheTree = {};
-      // for (let i = 0, len = this.tokenToGram.length; i < len; i++) {
-      //   let token = tokenData[i],
-      //     label = this.tokenToGram[i];
-      //   if (token.TokenName !== label) {
-      //     //因为我在GetToken中对最初的token流做了一次封装,所以这里需要逆向..
-      //     cacheTree[label] = new this.makeNode(
-      //       label,
-      //       [tokenData[i].TokenName],
-      //       ++cnt
-      //     );
-      //   }
-      // }
+        cacheShift = [];
       let nodeStack = []; //存储规约后的节点
       let inputArr = this.tokenToGram.slice(0);
       inputArr.push("$"); //注意push方法返回的是数组长度!!
@@ -161,7 +144,9 @@ export default {
             //即state类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
             Instruction += "进行移进动作: " + state + "和" + a + "分别入栈;";
             SymbolsStack.push(a);
-            nodeStack.push(new this.makeNode(a, undefined, ++cnt)); //移进时,创建新节点并入栈
+            let node = new this.makeNode(a, undefined, ++cnt);
+            nodeStack.push(node); //移进时,创建新节点并入栈
+            cacheShift.push(node); //将所有叶子节点加进来,它天然就是有序的,因为我要干一件事儿
             StateStack.push(state);
             Instruction += "\n面临输入符号: " + InputString[0];
           } else {
@@ -202,7 +187,9 @@ export default {
               "分别入栈;\n即将面临符号仍为: " +
               a;
             ////逆向构造AST
-            nodeStack.push(new this.makeNode(A, childrenNodes.reverse(), ++cnt)); //再将父节点加入栈中
+            nodeStack.push(
+              new this.makeNode(A, childrenNodes.reverse(), ++cnt)
+            ); //再将父节点加入栈中
           }
           if (state !== null) {
             a = InputString.shift(); //移进动作时输入符号才后移一位
@@ -218,13 +205,6 @@ export default {
           //   "面临" + a,
           //   this.actionTable[stateTop]
           // );
-
-          // if (this.actionTable[stateTop] === undefined) {
-          //   let s = StateStack.pop(); //那就再多退一个
-          //   let symbol = SymbolsStack.pop();
-          //   stateTop = StateStack[StateStack.length - 1];
-          //   Instruction += "; " + s + "和" + symbol + "也分别退栈";
-          // }
           //然后push这个七元式,再更新数据
           this.LRTable.push({
             key: OrderNumber,
@@ -268,8 +248,23 @@ export default {
           Instruction: "恭喜您!!源程序无语法错误!!LR分析成功",
         });
         console.log("LR分析成功!!");
-        console.log(nodeStack);//里面只有根节点并且label为Program就对了,你也可以在详细看看Children
-        this.$store.state.compilation.AST = nodeStack;
+        console.log(cacheShift);
+        //来吧还有件事儿没干呢,就是最底层的源代码有些符号因为我是进行了一次封装的,所以它不是最初的样子了
+        for (let i = 0, len = cacheShift.length; i < len; i++) {
+          let tempNodeName = cacheShift[i].label,
+            tokenName = tokenData[i].TokenName;
+          if (tempNodeName !== tokenName) {
+            //因为我在GetToken中对最初的token流做了一次封装,所以这里需要逆向..
+            let node = new this.makeNode(tokenName, undefined, ++cnt);
+            // if (cacheShift[i].children === undefined) {
+            cacheShift[i].children = [node]; //其实这里直接这样就足够了因为本身就是最底层终结符规约一次
+            // } else {
+            //   cacheShift[i].children.push(node);
+            // }
+          }
+        }
+        console.log(nodeStack); //里面只有根节点并且label为Program就对了,你也可以在详细看看Children
+        this.$store.state.compilation.AST = nodeStack; //OK完美
       }
     },
     //构造SLR1分析表
@@ -363,7 +358,7 @@ export default {
       console.log("所有产生式: ", this.productMap);
       console.log("拓广后的allProject: ", this.allProject);
       console.log("tokenToGrammar: ", this.tokenToGram);
-      this.getAllCanToEmpty();
+      this.getAllCanToEmpty(); //得到所有能经过有限次推导出空的符号,并缓存,注意也有ε
       console.log("所有符号能否推出空: ", this.canToEmpty);
     },
     //看看是否First集求对了
@@ -414,6 +409,7 @@ export default {
       // console.log(this.allProject);
       console.log("扩广文法总共" + count + "个项目");
     },
+    //得到所有能经过有限次推导出空的文法符号并缓存
     getAllCanToEmpty() {
       for (let A of this.allSymbols) {
         this.isACanToEmpty(A);
@@ -727,7 +723,7 @@ export default {
             //注意!!!!!找到了A->...`B...,现在要去找B->`γ
             //但是这里要做个特殊处理就是B可以推出空的时候,就要吧A->α`β也加入这个闭包I中
             //但是为了action表里那个length是正常的,所以要进行的是用`替换B,
-            //即将A->α`β加入该状态中,这个小细节隐藏的很深啊..我找了一俩小时的bug
+            //即将A->α`β加入该状态中,这个小细节隐藏的很深啊..我找了很久的bug,但是最大的bug是在go_i_x这个函数里对于'不属于'的没写好
             //后来发现还得做成β判断每个是否都能有限次推导出空才行,C
             let cache = [];
             for (let t = idx + 1, len = item.length; t < len; t++) {
@@ -758,7 +754,7 @@ export default {
               }
               // console.log(cache);
             }
-            // if (this.isACanToEmpty(nonTm)) {
+            // if (this.isACanToEmpty(nonTm)) {//其实用这个,对于我的文法貌似就够了,只是为了严谨我写了上面的
             //   let tempK = [];
             //   for (let ele of item) {
             //     if (ele !== nonTm) {
@@ -803,7 +799,7 @@ export default {
       this.followGramSymbols[stateI] = res;
       // this.$set(this.followGramSymbols, stateI, res);
     },
-    //不对..
+    //不对..而且后来没用上这个函数,..留着吧,也是曾经为了该BUG而思考的过程..
     go_i_empty() {
       let arr = [],
         obj = this.canToEmpty;
@@ -998,7 +994,7 @@ export default {
 
       this.visitedState.push(stateI); //代表这个状态我已经做完了闭包和状态转换
     },
-    //用了SLR1之后是否还有冲突
+    //判断用了SLR1之后是否还有冲突
     isCanSLR1() {
       let obj = this.conflictMap;
       for (let stateI in obj) {
