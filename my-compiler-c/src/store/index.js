@@ -13,20 +13,20 @@ export default new Vuex.Store({
       previewData: '',//左侧预览区的内容
       resultData: '',//右侧结果的内容
       textData: '',//C语言源程序的字符串形式
-      newTextData:'',
+      newTextData: '',
       tokenData: [],//词法分析后的结果,每条为数组[token,种别码,行,列],不能用对象,因为对象属性名和值唯一的,而我们这里可能重复属性名!!
-      purifyTextData:"",//净化后的源代码
+      purifyTextData: "",//净化后的源代码
       idData: {},//id表
-      tokenToGram:[],
-      firstData:{},
-      followData:{},
-      dfaData:[],
+      tokenToGram: [],//将最初的token流经过一次封装
+      firstData: {},//First集合
+      followData: {},//Follow集合
       nonTerminal: [], //非终结符
       terminal: [],//终结符,没必要写这个..
-      allSymbols:[],
+      allSymbols: [],//所有的文法符号
       productRight: [], //二维数组
       productMap: {},//{}是按ascll排序的,可以用new Map(),它是有序的但是遍历需要迭代器
-      LRTable:[],
+      LRTable: [],//详细展示LR移进/规约的每一步及说明
+      AST: [],//语法分析后的语法树,里面只有一个对象root;每个节点有label:名字,children:子节点数组,num:第几个节点(作为key)
     },
     changeCode: false,
   },

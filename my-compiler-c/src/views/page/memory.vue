@@ -11,6 +11,7 @@
 </template>
 
 <script>
+import { makeNode } from "@/storage/Tree.js";
 const columnHead = [
   {
     title: "OrderNumber",
@@ -53,6 +54,7 @@ export default {
       gotoTable: {},
       canToEmpty: {},
       LRTable: [], //[{里面有6+1个属性,对应表的列头名}]
+      tokenData: this.$store.state.compilation.tokenData,
       allSymbols: this.$store.state.compilation.allSymbols,
       tokenToGram: this.$store.state.compilation.tokenToGram,
       firstData: this.$store.state.compilation.firstData,
@@ -80,6 +82,7 @@ export default {
     this.startGrammarAnalysis();
   },
   methods: {
+    makeNode,
     //语法分析开关
     startGrammarAnalysis() {
       // console.log(this.isACanToEmpty("DeclarationStce"));
@@ -104,6 +107,22 @@ export default {
     //多个状态的时候,就需要严格判断当前可规约最长的符合哪个状态,符合哪个就goto到哪个
     //而action表中除了[s1],就是[production,length]只有这两种形式 故,我可以做个格式控制,导致流程不同.注意噢要精准!!
     startExecutiveProgram() {
+      let cnt = 0,
+        tokenData = this.tokenData,
+        cacheTree = {};
+      for (let i = 0, len = this.tokenToGram.length; i < len; i++) {
+        let token = tokenData[i],
+          label = this.tokenToGram[i];
+        if (token.TokenName !== label) {
+          //因为我在GetToken中对最初的token流做了一次封装,所以这里需要逆向..
+          cacheTree[label] = new this.makeNode(
+            label,
+            [tokenData[i].TokenName],
+            ++cnt
+          );
+        }
+      }
+
       let inputArr = this.tokenToGram.slice(0);
       inputArr.push("$"); //注意push方法返回的是数组长度!!
       //每六个变量组合成的一个对象就是LRTable的一条数据.  先初始化一些数据
@@ -136,7 +155,7 @@ export default {
         Instruction = "当前输入符号为: " + a + "  \n"; //每次先将产生式和说明重新初始化
         if (flag !== undefined) {
           // console.log(flag);
-          let state = null;
+          let state = null; //string类型为移进,数组类型为规约
           if (typeof flag === "string") {
             state = flag;
             //即state类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
@@ -148,7 +167,7 @@ export default {
             // console.log(flag);
             let len = flag[1],
               production = flag[0];
-            Production = production.slice(0, production.length - 1); //去掉`
+            Production = production.slice(0, production.length - 2); //去掉空格和`
             while (len--) {
               let si = StateStack.pop();
               let ai = SymbolsStack.pop();
@@ -156,7 +175,7 @@ export default {
             }
             let productArr = production.split("->");
             let A = productArr[0],
-              right = productArr[1].split(" ");
+              right = productArr[1].split(" "); //每个元素就是节点的label
             // console.log(Production,len,right);
             let topPointer = StateStack.length - 1; //准备规约
             SymbolsStack.push(A); //先将A入符号栈,然后从goto表中得到后继状态,并入状态栈
@@ -179,6 +198,18 @@ export default {
               A +
               "分别入栈;\n即将面临符号仍为: " +
               a;
+            ////逆向构造AST
+            let children = [];
+            for (let name of right) {
+              if (cacheTree[name] !== undefined) {
+                children.push(cacheTree[name]);
+                delete cacheTree[name]; //一定刚要记得删除
+              } else {
+                children.push(new this.makeNode(name, undefined, ++cnt));
+              }
+            }
+            //不行不行,不能直接这么写,应该有bug,因为可能有些A一样,但是实际子树不一样啊我靠..
+            cacheTree[A] = new this.makeNode(A, children, ++cnt);
           }
           if (state !== null) {
             a = InputString.shift(); //移进动作时输入符号才后移一位
