@@ -44,7 +44,12 @@ ArithmeticExpr::=Item ArithmeticExpr1
 ArithmeticExpr1::=+ Item ArithmeticExpr1@- Item ArithmeticExpr1@ε
 Item::=Factor Item1
 Item1::=* Factor Item1@/ Factor Item1@% Factor Item1@ε
-Factor::=( ArithmeticExpr )@CONST@VARIABLE@FunctionCall
+Factor::=UnaryExpr@( IDType ) Factor
+UnaryExpr::=PostfixExpr@++ UnaryExpr@-- UnaryExpr@UnaryOperator Factor@sizeof UnaryExpr@sizeof ( IDType )
+PostfixExpr::=PrimaryExpr PostfixExpr1
+PrimaryExpr::=( Expression )@CONST@VARIABLE@String@FunctionCall
+PostfixExpr1::=. IDentifier PostfixExpr1@++ PostfixExpr1@-- PostfixExpr1@ε
+UnaryOperator::=&@*@-@~
 CONST::=Number@Character
 VARIABLE::=IDentifier
 FunctionCall::=FuncIDentifier ( RealReferenceList )
@@ -59,7 +64,7 @@ BooleanItem::=BooleanFactor BooleanItem1
 BooleanItem1::=&& BooleanFactor BooleanItem1@ε
 BooleanFactor::=ArithmeticExpr@RelationalExpr@! BooleanExpr
 AssignExpr::=VARIABLE AssignOperator Expression
-AssignOperator::==@+=@-=@*=@/=@%=@>>=@<<=@&=@|=
+AssignOperator::==@+=@-=@*=@/=@%=@>>=@<<=@&=@^=@|=
 FunctionCallStce::=FunctionCall ;
 ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce@BREAKStce@CONTINUEStce
 CompoundStce::={ SentenceList }

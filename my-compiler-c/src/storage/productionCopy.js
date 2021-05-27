@@ -7,7 +7,10 @@ HeadFile::=# include HeadFileID
 HeadFileID::=<stdio.h>@<stdlib.h>@<math.h>@<ctype.h>@<string.h>@<malloc.h>@<signal.h>@<local.h>@<window.h>
 Sentence::=DeclarationStce@ExecuteStce
 DeclarationStce::=ExistDeclarationStce@ε
-ExistDeclarationStce::=ValueDeclaration@FunctionDeclaration
+ExistDeclarationStce::=ValueDeclaration@FunctionDeclaration@StructDeclaration
+StructDeclaration::=struct IDentifier { StructMemberList } ;
+StructMemberList::=ValueDeclaration ValueDeclarationClosure
+ValueDeclarationClosure::=ValueDeclaration ValueDeclarationClosure@ε
 SpecialInt::=intOfPreMain@ε
 ValueDeclaration::=ConstDeclaration@VariableDeclaration
 ConstDeclaration::=const IDType ConstDeclarationList
@@ -56,7 +59,7 @@ BooleanItem::=BooleanFactor BooleanItem1
 BooleanItem1::=&& BooleanFactor BooleanItem1@ε
 BooleanFactor::=ArithmeticExpr@RelationalExpr@! BooleanExpr
 AssignExpr::=VARIABLE AssignOperator Expression
-AssignOperator::==@+=@-=@*=@/=@%=@>>=@<<=@&=@|=
+AssignOperator::==@+=@-=@*=@/=@%=@>>=@<<=@&=@^=@|=
 FunctionCallStce::=FunctionCall ;
 ControlStce::=IFStce@FORStce@WHILEStce@DOWHILEStce@RETURNStce@BREAKStce@CONTINUEStce
 CompoundStce::={ SentenceList }

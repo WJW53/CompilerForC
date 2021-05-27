@@ -96,7 +96,6 @@ export default {
         }
       }
       this.$store.state.compilation.idData = this.idTable;
-      // console.log(this.idTable);
       this.$store.state.compilation.tokenData = this.token;
       this.$store.state.compilation.purifyTextData = this.purifyTextData;
       // console.log(this.purifyTextData);
