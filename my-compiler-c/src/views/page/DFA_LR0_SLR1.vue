@@ -73,6 +73,7 @@ export default {
       ixList: [], //状态I面临文法符号X时的下一个状态,三元式的写法
       followGramSymbols: {}, //存储每个状态I的后继文法符号
       visitedState: [], //存储做完了闭包和状态转换的状态
+      rowLines: [],
     };
   },
   //写好文法,有难度噢...  我是好的文法+LR0项目簇+识别活前缀的DFA+SLR1的做法,或者直接上LR1分析法也行更方便
@@ -107,6 +108,8 @@ export default {
         cacheShift = [];
       let nodeStack = []; //存储规约后的节点
       let inputArr = this.tokenToGram.slice(0);
+      let rowArr = this.rowLines.slice(0),
+        row = "???";
       inputArr.push("$"); //注意push方法返回的是数组长度!!
       //每六个变量组合成的一个对象就是LRTable的一条数据.  先初始化一些数据
       let OrderNumber = 0,
@@ -144,7 +147,8 @@ export default {
             //即state类似为StateI,是个字符串,准备移进,移进之后改变当前输入符号,我放在后面写了
             Instruction += "进行移进动作: " + state + "和" + a + "分别入栈;";
             SymbolsStack.push(a);
-            let node = new this.makeNode(a, undefined, ++cnt);
+            row = rowArr.shift();
+            let node = new this.makeNode(a, undefined, ++cnt, row);
             nodeStack.push(node); //移进时,创建新节点并入栈
             cacheShift.push(node); //将所有叶子节点加进来,它天然就是有序的,因为我要干一件事儿
             StateStack.push(state);
@@ -218,7 +222,16 @@ export default {
           flag = this.actionTable[stateTop][a];
         } else {
           //找不到就报错
-          console.log("Error");
+          console.log(
+            "Error",
+            this.closureC[StateStack[StateStack.length - 1]]
+          );
+          let arr = [],
+            obj = this.actionTable[StateStack[StateStack.length - 1]];
+          for (let key in obj) {
+            arr.push(key);
+          }
+          let errorStr = "此处期待满足下述任一文法符号: " + arr.join("、");
           let stateString = StateStack.join(","),
             symbolsString = SymbolsStack.join(" "),
             inputString = InputString.join(" ");
@@ -229,7 +242,14 @@ export default {
             SymbolsStack: symbolsString,
             Production,
             InputString: inputString,
-            Instruction: "当前输入符号为: " + a + "  \n" + "此处有语法错误!!",
+            Instruction:
+              "当前输入符号为: " +
+              a +
+              "  \n" +
+              "第 " +
+              row +
+              " 行有语法错误!!\n" +
+              errorStr,
           });
           break;
         }
@@ -352,6 +372,10 @@ export default {
           this.allSymbols.length +
           " 个文法符号(包含非终结符/终结符/空)!"
       );
+      for (let item of this.tokenData) {
+        this.rowLines.push(item.row);
+      }
+      console.log("净化后的源程序的所有TokenRow: ", this.rowLines);
       console.log("终结符: ", this.terminal);
       console.log("非终结符: ", this.nonTerminal);
       console.log("所有产生式右部: ", this.productRight);
@@ -680,12 +704,52 @@ export default {
           // console.log(this.closureC[stateI][leftName]);
           let sonNonTm = similar[m][idx2 + 1]; //比如说:是 Program->`HeadFilesβ  里的HeadFiles
           if (sonNonTm !== undefined && this.nonTerminal.includes(sonNonTm)) {
+            //先做个特殊情况处理就是A->`时,就是在getClosure中的处理
+            let cache = [];
+            let item = similar[m];
+            for (let t = idx2 + 1, len = item.length; t < len; t++) {
+              if (this.canToEmpty[item[t]]) {
+                let tempK = [],
+                  sonNonTm = item[t];
+                cache.push(sonNonTm);
+                for (let ele of item) {
+                  if (cache.includes(ele) === false) {
+                    //就是把之前推出空的滤过
+                    tempK.push(ele);
+                  }
+                }
+                let f = true;
+                for (let arr of similar) {
+                  //遍历temp的已有产生式
+                  if (arr.join(" ") === tempK.join(" ")) {
+                    f = false;
+                    break; //就是查重
+                  }
+                }
+                if (f === true) {
+                  tempArr.push([...tempK]);
+                }
+              } else {
+                break;
+              }
+            }
             //然后继续重复上面的动作,即,将所有不在ClosureI中的形如HeadFiles->`γ加入ClosureI中
             //遍历headfiles的数组,找到有`γ的子数组,并且不在ClosureI中将其加入,
             this.getSonClosure(sonNonTm, stateI); //所以写成递归了
           }
           if (sonNonTm === undefined) {
-            tempArr.push([...similar[m]]);
+            let f = true, //都要先查看是否有重复
+              tempK = similar[m];
+            for (let arr of tempArr) {
+              //遍历temp的已有产生式
+              if (arr.join(" ") === tempK.join(" ")) {
+                f = false;
+                break; //就是查重
+              }
+            }
+            if (f === true) {
+              tempArr.push([tempK]);
+            }
           }
         }
       }
@@ -699,27 +763,19 @@ export default {
       let index = "State" + this.stateCnt; //第n个状态/项目集,一个状态中一般会有多个项目
       // this.closureC[index] = {};//不行,这样没有响应式
       this.$set(this.closureC, index, {});
-      // console.log('1111');
       for (let key in collection) {
         this.closureC[index][key] = collection[key]; //1. 先把该项目集里的所有项目加进来
       }
       //2.若A->α`Bβ在Closure(I)中,则将所有不在它里面的形如B->`γ的项目加进来
       for (let key in this.closureC[index]) {
         let temp = this.closureC[index][key]; //二维数组
+        // console.log(index, key);
         for (let i = 0; i < temp.length; i++) {
           let item = temp[i]; //这是每一条产生式
-          // for (let j = 0; j < item.length; j++) {
-          //???这个是干嘛的??我tm什么时候给打起注释了,什么时候把这个for搞丢得??必须有这个for
-          //对不起搞错了,这个for的确没用,没用
           let idx = item.indexOf("`"),
             nonTm = item[idx + 1];
-          // console.log(nonTm);
-          // console.log(this.nonTerminal);
-          if (
-            idx > -1 &&
-            this.nonTerminal.includes(nonTm) &&
-            nonTm !== undefined
-          ) {
+          // console.log(nonTm,this.nonTerminal);
+          if (this.nonTerminal.includes(nonTm) && nonTm !== undefined) {
             //注意!!!!!找到了A->...`B...,现在要去找B->`γ
             //但是这里要做个特殊处理就是B可以推出空的时候,就要吧A->α`β也加入这个闭包I中
             //但是为了action表里那个length是正常的,所以要进行的是用`替换B,
@@ -727,7 +783,7 @@ export default {
             //后来发现还得做成β判断每个是否都能有限次推导出空才行,C
             let cache = [];
             for (let t = idx + 1, len = item.length; t < len; t++) {
-              if (this.canToEmpty[item[t]] && item[t] !== "ε") {
+              if (this.canToEmpty[item[t]]) {
                 let tempK = [],
                   sonNonTm = item[t];
                 cache.push(sonNonTm);
@@ -746,15 +802,16 @@ export default {
                   }
                 }
                 if (f === true) {
-                  // console.log(this.closureC[index][key], tempK);
+                  // console.log(index,key, this.closureC[index][key], tempK);
                   this.closureC[index][key].push([...tempK]);
                 }
               } else {
                 break;
               }
-              // console.log(cache);
             }
-            // if (this.isACanToEmpty(nonTm)) {//其实用这个,对于我的文法貌似就够了,只是为了严谨我写了上面的
+            // console.log(cache);
+            // if (this.isACanToEmpty(nonTm)) {
+            //   //其实用这个,对于我的文法貌似就够了,只是为了严谨我写了上面的
             //   let tempK = [];
             //   for (let ele of item) {
             //     if (ele !== nonTm) {
@@ -771,17 +828,16 @@ export default {
             //     }
             //   }
             //   if (f === true) {
-            //     console.log(index, this.closureC[index][key], tempK);
+            //     // console.log(index, this.closureC[index][key], tempK);
             //     this.closureC[index][key].push([...tempK]);
             //   }
             // }
             //3.更新Statei,从里面继续重复执行上述两步,直到没有更多的项目能加入Closure(I)中
             this.getSonClosure(nonTm, index); //但是它不能继续找它本身了!!
           }
-          // }
         }
+        // console.log(this.closureC);
       }
-      // console.log(this.closureC);
     },
     //得到状态I的所有的后继文法符号,注意边界和只有一个`的情况
     getStateIFollowGramSymbols(stateI) {
