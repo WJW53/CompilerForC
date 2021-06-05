@@ -1,5 +1,4 @@
 let specTable = {
-	//scanf里的%c,%d,%f啥的我还没设计..
 	wordType:
 	{
 		error: 0,
