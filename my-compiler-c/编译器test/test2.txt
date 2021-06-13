@@ -1,0 +1,67 @@
+# include <stdio.h>
+#  include<stdlib.h>
+#    include<math.h>
+
+int add(int,int);
+int mul(int,int);
+
+struct person{
+	int ID[]={1,2,3,4};
+//、弄啥嘞?
+	char name[10]={};
+	char sex=1;
+};
+/*/*
+int main(){
+	 double t = 0.32;
+	for(int i = 0;i<5;i+=1){
+		if(i==3){
+		    continue;
+		}
+	return 1;
+}*/
+int main(){
+	int a=3, b = 4,q=7,p=8,v;//sdf;
+	v=!a;
+	double t = 0.32,m=1.213,n=12.10,r=033,y=0x9f,x=12.8e-3,k=0;
+	q = sizeof p;
+	q = sizeof (int);
+	int c = a+3*b/--q-p++;
+/*;asdl
+asd
+*/	p&=q;
+	p>>=q;
+	printf("%d,%lf\n",a,x);
+	while(--a){
+		scanf("%d",&v);
+	}
+	for(int i = 0;i<5;i++){
+		if(i==3&&p-1){
+		    continue;
+		}
+		else{
+		if(b||a){
+			int b = 3;
+			do{
+				--b;
+			}while(b);
+		}
+		    i+=1;
+		    break;
+		}
+	}
+	//int ccc= a<<1*b/2;
+printf("%d\n",c);
+	double d = a+++b%(1+2);
+	char s[]="123abc";
+	char cc =  'A';
+	add(p,q);
+	return 0+1;
+}
+
+int add(int x,int y){
+	return x + y;
+}
+int mul(int x,int y){
+	return x * y;
+}

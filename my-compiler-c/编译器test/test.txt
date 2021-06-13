@@ -1,0 +1,47 @@
+#include<stdio.h>
+//#include<stdlib.h>
+//#include<math.h>
+
+struct person{
+	char* ID;
+	char* name;
+	char sex;
+};
+/*
+typedef struct person P;
+P xiaoming,dahuang;*/
+int add(int,int);
+
+int main(){
+	int a=3, b = 4,q=7,p=8,v;//sdf;
+	double t = 0.32,m=1.213,n=12.10,r=033,y=0x9f,x=12.8e-3,k=0;
+/*;asdl
+asd
+*/	p&=q;
+	p>>=q;
+	printf("%d,%lf\n",a,x);
+	while(a-=1){
+		scanf("%d",&v);
+	}
+	for(int i = 0;i<5;i+=1){
+		if(i==3){
+		    continue;
+		}
+//else{
+		    i+=1;
+		    break;
+		//}
+	}
+//	int c= a<<1*b/2;
+int c = a+3*b/2;
+printf("%d\n",c);
+	//double d = a+++b;
+	char s[]="123abc";
+	char cc =  'A';
+	add(p,q);
+	return 0;
+}
+
+int add(int x,int y){
+	return x + y;
+}

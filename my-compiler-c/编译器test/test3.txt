@@ -1,0 +1,14 @@
+#include<stdio.h>
+/*#include<stdlib.h>
+P xiaoming,dahuang;
+*/
+int add(int,int);
+int main(){
+	int a=3, b = 4,q=7,p=8,v;
+	double t = 0.32,m=1.213,n=12.10,r=033,y=0x9f,x=12.8e-3,k=0;
+	p&=q;
+	char s[]="123";
+	while(a-=1){
+		scanf("%d",v);
+	}
+}
